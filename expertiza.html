@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Чек-лист · отмена приостановления за экспертизу</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: #ece4d7;
+      font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+
+    .card {
+      max-width: 1100px;
+      width: 100%;
+      background-color: #FDFBF7;
+      border-radius: 60px;
+      padding: 3rem;
+      box-shadow: 0 35px 55px -20px rgba(0, 0, 0, 0.15), 0 10px 20px -5px rgba(212, 175, 55, 0.2);
+      border: 1px solid rgba(212, 175, 55, 0.25);
+    }
+
+    h1 {
+      font-size: 2.6rem;
+      font-weight: 450;
+      color: #2E2E2E;
+      letter-spacing: -0.01em;
+      border-bottom: 2px solid #D4AF37;
+      padding-bottom: 0.8rem;
+      margin-bottom: 1rem;
+    }
+
+    .subhead {
+      font-size: 1.1rem;
+      color: #5a5a5a;
+      margin-bottom: 2rem;
+      background: rgba(212, 175, 55, 0.07);
+      padding: 0.7rem 1.8rem;
+      border-radius: 60px;
+      display: inline-block;
+    }
+
+    /* сетка: чек-лист и результат */
+    .checklist-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    /* левая панель с блоками вопросов */
+    .checklist-panel {
+      background: #F9F5EF;
+      border-radius: 48px;
+      padding: 2rem;
+      border: 1px solid rgba(212, 175, 55, 0.3);
+    }
+
+    .block {
+      margin-bottom: 2.2rem;
+      border-bottom: 1px dashed rgba(212,175,55,0.3);
+      padding-bottom: 1.5rem;
+    }
+
+    .block:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .block-title {
+      font-size: 1.3rem;
+      font-weight: 550;
+      color: #2E2E2E;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .block-title span {
+      background: #D4AF37;
+      color: #FDFBF7;
+      font-size: 0.9rem;
+      padding: 0.2rem 0.8rem;
+      border-radius: 40px;
+    }
+
+    .question {
+      margin-bottom: 1.2rem;
+    }
+
+    .q-text {
+      font-weight: 470;
+      color: #2b2b2b;
+      margin-bottom: 0.5rem;
+      font-size: 1.05rem;
+    }
+
+    .options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      align-items: center;
+    }
+
+    .radio-option {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      color: #3d3d3d;
+    }
+
+    .radio-option input[type="radio"] {
+      appearance: none;
+      width: 1.2rem;
+      height: 1.2rem;
+      border: 2px solid #D4AF37;
+      border-radius: 50%;
+      outline: none;
+      transition: 0.1s;
+      background-color: white;
+    }
+
+    .radio-option input[type="radio"]:checked {
+      background-color: #D4AF37;
+      box-shadow: inset 0 0 0 4px #FDFBF7;
+    }
+
+    .radio-option input[type="radio"]:hover {
+      border-color: #b48c2e;
+    }
+
+    /* правая панель — результат */
+    .result-panel {
+      background: #FDFBF7;
+      border-radius: 48px;
+      padding: 2rem;
+      border: 1px solid #D4AF37;
+      box-shadow: 0 20px 30px -10px rgba(212, 175, 55, 0.3);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .percent-badge {
+      background: #2E2E2E;
+      color: #FDFBF7;
+      padding: 1rem;
+      border-radius: 60px;
+      font-size: 2.8rem;
+      font-weight: 600;
+      text-align: center;
+      margin-bottom: 1.5rem;
+      border: 2px solid #D4AF37;
+    }
+
+    .violations-list {
+      background: #F9F5EF;
+      border-radius: 36px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .violation-item {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      padding: 0.7rem 0;
+      border-bottom: 1px dashed rgba(212, 175, 55, 0.2);
+      font-size: 1rem;
+    }
+
+    .violation-item:last-child {
+      border-bottom: none;
+    }
+
+    .violation-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .red-bg { background-color: #C62828; box-shadow: 0 0 8px #ef9a9a; }
+    .yellow-bg { background-color: #F1C40F; box-shadow: 0 0 8px #fff1b8; }
+    .green-bg { background-color: #2E7D32; box-shadow: 0 0 8px #81c784; }
+
+    .violation-text {
+      flex: 1;
+      color: #2E2E2E;
+    }
+
+    .violation-law {
+      font-size: 0.85rem;
+      color: #7a5f2e;
+      margin-top: 0.1rem;
+    }
+
+    .arguments-box {
+      background: #FDFBF7;
+      border-radius: 28px;
+      padding: 1.2rem;
+      border: 1px solid #D4AF37;
+    }
+
+    .arguments-title {
+      font-weight: 600;
+      margin-bottom: 0.8rem;
+      color: #2E2E2E;
+    }
+
+    .argument-item {
+      background: #F9F5EF;
+      padding: 0.6rem 1rem;
+      border-radius: 30px;
+      margin-bottom: 0.5rem;
+      font-size: 0.95rem;
+      border-left: 4px solid #D4AF37;
+    }
+
+    .footnote {
+      margin-top: 2rem;
+      font-size: 0.9rem;
+      color: #7a7a7a;
+      text-align: center;
+      border-top: 1px dashed #D4AF37;
+      padding-top: 1.2rem;
+    }
+
+    .reset-button {
+      background: transparent;
+      border: 1.5px solid #D4AF37;
+      color: #2E2E2E;
+      padding: 0.5rem 1.2rem;
+      border-radius: 40px;
+      cursor: pointer;
+      font-weight: 500;
+      margin-top: 1rem;
+      transition: 0.1s;
+    }
+
+    .reset-button:hover {
+      background: #D4AF37;
+      color: #FDFBF7;
+    }
+
+    @media (max-width: 800px) {
+      .checklist-grid { grid-template-columns: 1fr; }
+      .card { padding: 2rem; }
+      h1 { font-size: 2.2rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🔍 Чек-лист: отмена приостановления</h1>
+    <div class="subhead">проверьте определение о назначении экспертизы на наличие ошибок</div>
+
+    <div class="checklist-grid">
+      <!-- левая часть: блоки вопросов -->
+      <div class="checklist-panel">
+        <!-- Блок 1. Необходимость специальных знаний -->
+        <div class="block">
+          <div class="block-title"><span>1</span> Необходимость спецзнаний</div>
+          <div class="question">
+            <div class="q-text">Были ли в деле вопросы, требующие специальных знаний?</div>
+            <div class="options">
+              <label class="radio-option"><input type="radio" name="q1" value="no" checked> Нет, не требовались</label>
+              <label class="radio-option"><input type="radio" name="q1" value="yes"> Да, требовались</label>
+              <label class="radio-option"><input type="radio" name="q1" value="doubt"> Спорно</label>
+            </div>
+          </div>
+          <div class="question">
+            <div class="q-text">Указал ли суд, почему без экспертизы нельзя разрешить спор?</div>
+            <div class="options">
+              <label class="radio-option"><input type="radio" name="q2" value="no" checked> Нет, не указал</label>
+              <label class="radio-option"><input type="radio" name="q2" value="yes"> Да, указал</label>
+            </div>
+          </div>
+          <div class="question">
+            <div class="q-text">Назначается повторная экспертиза? Если да — указаны ли сомнения в первоначальной?</div>
+            <div class="options">
+              <label class="radio-option"><input type="radio" name="q3" value="none" checked> Не назначается / первичная</label>
+              <label class="radio-option"><input type="radio" name="q3" value="bad"> Повторная, сомнения не указаны</label>
+              <label class="radio-option"><input type="radio" name="q3" value="good"> Повторная, сомнения указаны</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Блок 2. Содержание определения -->
+        <div class="block">
+          <div class="block-title"><span>2</span> Содержание определения</div>
+          <div class="question">
+            <div class="q-text">Указан ли конкретный эксперт (ФИО)?</div>
+            <div class="options">
+              <label class="radio-option"><input type="radio" name="q4" value="no" checked> Не указан</label>
+              <label class="radio-option"><input type="radio" name="q4" value="yes"> Указан</label>
+            </div>
+          </div>
+          <div class="question">
+            <div class="q-text">Указан ли срок проведения экспертизы?</div>
+            <div class="options">
+              <label class="radio-option"><input type="radio" name="q5" value="no" checked> Не указан</label>
+              <label class="radio-option"><input type="radio" name="q5" value="yes"> Указан</label>
+            </div>
+          </div>
+          <div class="question">
+            <div class="q-text">Содержится предупреждение об уголовной ответственности (ст. 307 УК)?</div>
+            <div class="options">
+              <label class="radio-option"><input type="radio" name="q6" value="no" checked> Отсутствует</label>
+              <label class="radio-option"><input type="radio" name="q6" value="yes"> Есть предупреждение</label>
+            </div>
+          </div>
+          <div class="question">
+            <div class="q-text">Разрешены ли ходатайства сторон о присутствии при экспертизе?</div>
+            <div class="options">
+              <label class="radio-option"><input type="radio" name="q7" value="no" checked> Не разрешены / не указано</label>
+              <label class="radio-option"><input type="radio" name="q7" value="yes"> Разрешены</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Блок 3. Согласие сторон -->
+        <div class="block">
+          <div class="block-title"><span>3</span> Согласие сторон</div>
+          <div class="question">
+            <div class="q-text">Было ли ходатайство стороны о назначении экспертизы?</div>
+            <div class="options">
+              <label class="radio-option"><input type="radio" name="q8" value="no" checked> Нет</label>
+              <label class="radio-option"><input type="radio" name="q8" value="yes"> Да, было</label>
+            </div>
+          </div>
+          <div class="question">
+            <div class="q-text">Если ходатайства не было — давали ли стороны согласие?</div>
+            <div class="options">
+              <label class="radio-option"><input type="radio" name="q9" value="no" checked> Нет / возражения</label>
+              <label class="radio-option"><input type="radio" name="q9" value="yes"> Да, согласие было</label>
+            </div>
+          </div>
+          <div class="question">
+            <div class="q-text">Вносили ли стороны деньги на депозит суда?</div>
+            <div class="options">
+              <label class="radio-option"><input type="radio" name="q10" value="no" checked> Нет</label>
+              <label class="radio-option"><input type="radio" name="q10" value="yes"> Да</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Блок 4. Экспертное учреждение -->
+        <div class="block">
+          <div class="block-title"><span>4</span> Экспертное учреждение</div>
+          <div class="question">
+            <div class="q-text">Подпадает ли экспертиза под Перечень из Распоряжения № 3214-р? (кадастр, самовольное строительство)</div>
+            <div class="options">
+              <label class="radio-option"><input type="radio" name="q11" value="no" checked> Нет / не подпадает</label>
+              <label class="radio-option"><input type="radio" name="q11" value="yes"> Да, подпадает</label>
+            </div>
+          </div>
+          <div class="question">
+            <div class="q-text">Если да — назначена ли экспертиза в государственное учреждение?</div>
+            <div class="options">
+              <label class="radio-option"><input type="radio" name="q12" value="no" checked> Нет, негосударственное</label>
+              <label class="radio-option"><input type="radio" name="q12" value="yes"> Да, государственное</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- правая часть: результат -->
+      <div class="result-panel">
+        <div class="percent-badge" id="percentScore">0%</div>
+
+        <div class="violations-list" id="violationsList">
+          <!-- будут заполняться динамически -->
+          <div class="violation-item">
+            <div class="violation-icon green-bg"></div>
+            <div class="violation-text">Нарушений не выявлено</div>
+          </div>
+        </div>
+
+        <div class="arguments-box">
+          <div class="arguments-title">📋 Аргументы для жалобы</div>
+          <div id="argumentsList">
+            <div class="argument-item">• Нажмите "Обновить" или меняйте ответы</div>
+          </div>
+        </div>
+
+        <button class="reset-button" id="resetBtn">Сбросить все ответы</button>
+      </div>
+    </div>
+
+    <div class="footnote">
+      на основе судебной практики: постановления 17ААС от 21.01.2026 № А50-22327/2023, АС МО от 26.03.2025 № А41-110470/2023, 16ААС от 30.01.2026 № А18-1743/2024 и др.
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      // Собираем все радио-кнопки по именам
+      const q1 = document.querySelectorAll('input[name="q1"]');
+      const q2 = document.querySelectorAll('input[name="q2"]');
+      const q3 = document.querySelectorAll('input[name="q3"]');
+      const q4 = document.querySelectorAll('input[name="q4"]');
+      const q5 = document.querySelectorAll('input[name="q5"]');
+      const q6 = document.querySelectorAll('input[name="q6"]');
+      const q7 = document.querySelectorAll('input[name="q7"]');
+      const q8 = document.querySelectorAll('input[name="q8"]');
+      const q9 = document.querySelectorAll('input[name="q9"]');
+      const q10 = document.querySelectorAll('input[name="q10"]');
+      const q11 = document.querySelectorAll('input[name="q11"]');
+      const q12 = document.querySelectorAll('input[name="q12"]');
+
+      const percentSpan = document.getElementById('percentScore');
+      const violationsDiv = document.getElementById('violationsList');
+      const argumentsDiv = document.getElementById('argumentsList');
+      const resetBtn = document.getElementById('resetBtn');
+
+      // Функция получения значения радио
+      function getRadioValue(radios) {
+        for (let r of radios) if (r.checked) return r.value;
+        return null; // не должно случиться
+      }
+
+      // Сброс всех на дефолтные (первые во всех группах)
+      function resetAll() {
+        const allRadios = document.querySelectorAll('input[type="radio"]');
+        // первый во всех группах — checked
+        const groups = {};
+        allRadios.forEach(r => {
+          if (!groups[r.name]) groups[r.name] = [];
+          groups[r.name].push(r);
+        });
+        for (let name in groups) {
+          if (groups[name].length > 0) {
+            groups[name][0].checked = true;
+          }
+        }
+        updateAll();
+      }
+
+      // Основная функция обновления
+      function updateAll() {
+        const v1 = getRadioValue(q1);    // no / yes / doubt
+        const v2 = getRadioValue(q2);    // no / yes
+        const v3 = getRadioValue(q3);    // none / bad / good
+        const v4 = getRadioValue(q4);    // no / yes
+        const v5 = getRadioValue(q5);    // no / yes
+        const v6 = getRadioValue(q6);    // no / yes
+        const v7 = getRadioValue(q7);    // no / yes
+        const v8 = getRadioValue(q8);    // no / yes
+        const v9 = getRadioValue(q9);    // no / yes
+        const v10 = getRadioValue(q10);  // no / yes
+        const v11 = getRadioValue(q11);  // no / yes
+        const v12 = getRadioValue(q12);  // no / yes
+
+        let score = 0;
+        let maxScore = 0;
+        const violations = [];
+        const argumentsList = [];
+
+        // ---- Блок 1 ----
+        // q1: если "no" (не требовались) +1 нарушение, если "doubt" 0.5, если "yes" 0
+        if (v1 === 'no') {
+          score += 1;
+          violations.push({ text: 'Дело не требует специальных знаний, но экспертиза назначена', color: 'red', law: 'ст. 82 АПК' });
+          argumentsList.push('• В деле отсутствовали вопросы, требующие специальных знаний (ст. 82 АПК). Суд мог разрешить спор по имеющимся доказательствам.');
+        } else if (v1 === 'doubt') {
+          score += 0.5;
+          violations.push({ text: 'Необходимость спецзнаний спорна, суд не обосновал', color: 'yellow', law: 'ст. 82 АПК' });
+          argumentsList.push('• Необходимость специальных знаний не была очевидна, суд не привел убедительного обоснования.');
+        }
+
+        // q2: если не указал почему без экспертизы нельзя +1
+        if (v2 === 'no') {
+          score += 1;
+          violations.push({ text: 'Суд не указал, почему без экспертизы нельзя разрешить спор', color: 'red', law: 'п. 2 ст. 82 АПК' });
+          argumentsList.push('• Суд не мотивировал невозможность рассмотрения дела без экспертизы (п. 2 ст. 82 АПК).');
+        }
+
+        // q3: если повторная и сомнения не указаны (bad) +1
+        if (v3 === 'bad') {
+          score += 1;
+          violations.push({ text: 'Повторная экспертиза назначена без указания сомнений в первоначальной', color: 'red', law: 'пост. 17ААС № А50-22327/2023' });
+          argumentsList.push('• Суд не указал, какие именно сомнения возникли в первоначальном заключении, что необходимо для повторной экспертизы.');
+        }
+
+        // ---- Блок 2 ----
+        if (v4 === 'no') {
+          score += 1;
+          violations.push({ text: 'Не указан конкретный эксперт (ФИО)', color: 'red', law: 'ч. 4 ст. 82 АПК' });
+          argumentsList.push('• Отсутствие ФИО эксперта лишает стороны права на отвод и возможности предупредить об уголовной ответственности (ч. 4 ст. 82 АПК).');
+        }
+        if (v5 === 'no') {
+          score += 1;
+          violations.push({ text: 'Не указан срок проведения экспертизы', color: 'yellow', law: 'ст. 82 АПК' });
+          argumentsList.push('• Определение не содержит срока проведения экспертизы, что затрудняет контроль за ходом процесса.');
+        }
+        if (v6 === 'no') {
+          score += 1;
+          violations.push({ text: 'Отсутствует предупреждение эксперта об уголовной ответственности', color: 'red', law: 'ч. 4 ст. 82 АПК' });
+          argumentsList.push('• Эксперт не предупрежден об ответственности по ст. 307 УК — существенное нарушение.');
+        }
+        if (v7 === 'no') {
+          score += 0.8;
+          violations.push({ text: 'Не разрешены ходатайства о присутствии при экспертизе', color: 'yellow', law: 'пост. 9ААС № А40-164831/2024' });
+          argumentsList.push('• Суд не рассмотрел ходатайства сторон о присутствии при проведении экспертизы.');
+        }
+
+        // ---- Блок 3 ----
+        if (v8 === 'no' && v9 === 'no') { // нет ходатайства и нет согласия
+          score += 1.2;
+          violations.push({ text: 'Экспертиза назначена без ходатайства и без согласия сторон', color: 'red', law: 'ст. 82 АПК, пост. АС МО № А40-234804/2022' });
+          argumentsList.push('• Суд назначил экспертизу по собственной инициативе при отсутствии ходатайства и согласия сторон, что является нарушением.');
+        } else if (v8 === 'no' && v9 === 'yes') {
+          // согласие было — норм
+        }
+
+        if (v10 === 'no') {
+          // отсутствие денег на депозите — не всегда нарушение, но может быть аргументом, если суд назначил без оплаты
+          argumentsList.push('• Стороны не вносили средства на депозит, однако суд назначил экспертизу — возможен риск неоплаты.');
+        }
+
+        // ---- Блок 4 ----
+        if (v11 === 'yes' && v12 === 'no') {
+          score += 1.5;
+          violations.push({ text: 'Экспертиза из Перечня №3214-р назначена в негосударственное учреждение', color: 'red', law: 'Распоряжение №3214-р' });
+          argumentsList.push('• Экспертиза подпадает под Перечень видов, проводимых исключительно государственными экспертными организациями, но назначена в негосударственное учреждение.');
+        }
+
+        // Подсчет процентов: максимальный возможный score (примерно) 10-11, округлим до 10
+        const maxPossible = 10;
+        let percent = Math.min(100, Math.round((score / maxPossible) * 100));
+        percentSpan.textContent = percent + '%';
+
+        // Отрисовка списка нарушений
+        if (violations.length === 0) {
+          violationsDiv.innerHTML = `<div class="violation-item"><div class="violation-icon green-bg"></div><div class="violation-text">Нарушений не выявлено, определение формально корректно</div></div>`;
+        } else {
+          let html = '';
+          violations.forEach(v => {
+            let colorClass = v.color === 'red' ? 'red-bg' : (v.color === 'yellow' ? 'yellow-bg' : 'green-bg');
+            html += `<div class="violation-item">
+              <div class="violation-icon ${colorClass}"></div>
+              <div class="violation-text">
+                ${v.text}
+                <div class="violation-law">${v.law || ''}</div>
+              </div>
+            </div>`;
+          });
+          violationsDiv.innerHTML = html;
+        }
+
+        // Аргументы (убираем дубли)
+        const uniqueArgs = [...new Set(argumentsList)];
+        if (uniqueArgs.length === 0) {
+          argumentsDiv.innerHTML = '<div class="argument-item">• Существенных нарушений не найдено, но проверьте иные основания.</div>';
+        } else {
+          let argsHtml = '';
+          uniqueArgs.forEach(a => { argsHtml += `<div class="argument-item">${a}</div>`; });
+          argumentsDiv.innerHTML = argsHtml;
+        }
+      }
+
+      // Подписка на изменения всех радио
+      const allRadios = document.querySelectorAll('input[type="radio"]');
+      allRadios.forEach(r => r.addEventListener('change', updateAll));
+
+      resetBtn.addEventListener('click', resetAll);
+
+      // Инициализация
+      updateAll();
+    })();
+  </script>
+  <noscript>Включите JavaScript для работы чек-листа</noscript>
+</body>
+</html>
