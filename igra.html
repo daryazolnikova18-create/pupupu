@@ -1,0 +1,809 @@
+<!DOCTYPE html><html lang="ru"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Уйти в 18:00 — прототип симулятора главбуха</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#2b3240; --panel:rgba(250,249,244,.94); --ink:#1c2230; --muted:#5a6272;
+  --line:rgba(28,34,48,.14); --seal:#1f4fbf; --good:#1d7a45; --bad:#b4232c; --marker:#f2c230;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --panel:rgba(30,35,46,.93); --ink:#eef1f6; --muted:#a8b0bf; --line:rgba(255,255,255,.14);
+  --seal:#7ea2ff; --good:#5fd394; --bad:#ff7b82; --marker:#f5cf52;}}
+:root[data-theme="dark"]{
+  --panel:rgba(30,35,46,.93); --ink:#eef1f6; --muted:#a8b0bf; --line:rgba(255,255,255,.14);
+  --seal:#7ea2ff; --good:#5fd394; --bad:#ff7b82; --marker:#f5cf52;}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{height:100%;margin:0;background:var(--bg);color:var(--ink);overflow:hidden;
+  font-family:"Onest",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;font-size:15px;line-height:1.45}
+#app{position:relative;width:100%;height:100%}
+#c{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+#c.pointer{cursor:pointer}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.28);backdrop-filter:blur(6px)}
+#hud{position:absolute;left:12px;top:12px;padding:12px 14px 12px;width:230px}
+.clock{font-size:40px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.clock small{font-size:14px;font-weight:600;color:var(--muted);margin-left:6px;letter-spacing:0}
+.row{display:flex;justify-content:space-between;gap:8px;font-size:13.5px;margin-top:6px}
+.row b{font-variant-numeric:tabular-nums}
+.bar{height:7px;border-radius:4px;background:var(--line);overflow:hidden;margin-top:4px}
+.bar i{display:block;height:100%;width:10%;background:var(--good);transition:width .3s,background .3s}
+#card{position:absolute;right:12px;top:12px;width:310px;padding:0;overflow:hidden}
+#card .head{padding:10px 16px;color:#fff;font-weight:600;font-size:13.5px}
+#card .inner{padding:12px 16px 14px}
+#card h3{margin:0 0 6px;font-size:19px;line-height:1.2}
+#card p{margin:0 0 10px;color:var(--ink)}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.tag{font-size:12.5px;padding:3px 8px;border-radius:20px;border:1px solid var(--line);font-weight:600}
+.tag.urgent{border-color:var(--bad);color:var(--bad)}
+.tag.ok{border-color:var(--good);color:var(--good)}
+.tag.bad{background:var(--bad);color:#fff;border-color:var(--bad)}
+.hint{font-size:12.5px;color:var(--muted);border-top:1px dashed var(--line);padding-top:8px}
+#toasts{position:absolute;left:50%;top:12px;transform:translateX(-50%);width:min(92vw,440px);display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+.toast{padding:8px 14px;font-weight:600;font-size:14px;border-left:5px solid var(--muted);transition:opacity .4s,transform .4s}
+.toast.good{border-left-color:var(--good)} .toast.bad{border-left-color:var(--bad)}
+.toast.out{opacity:0;transform:translateY(-6px)}
+#tip{position:absolute;pointer-events:none;padding:5px 10px;font-size:13px;font-weight:600;white-space:nowrap;display:none}
+#vignette{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .6s;
+  background:radial-gradient(ellipse at center,transparent 50%,rgba(170,10,20,.6))}
+#modal{position:absolute;inset:0;display:grid;place-items:center;padding:16px;background:rgba(15,18,26,.55)}
+#modal[hidden]{display:none}
+.mbox{width:min(480px,100%);max-height:92%;overflow:auto;padding:22px 24px}
+.mbox h2{margin:0 0 8px;font-size:26px;line-height:1.15;font-weight:800}
+.mbox p{margin:0 0 10px}
+.mbox ul{margin:6px 0 10px;padding-left:20px}
+.mbox .who{font-size:13px;color:var(--muted);font-weight:600;margin-bottom:4px}
+.mbox .quote{font-size:19px;font-weight:600;margin:0 0 14px}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+button{font:inherit;font-weight:600;font-size:15px;padding:10px 16px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+button.primary{background:var(--seal);border-color:var(--seal);color:#fff}
+button:focus-visible{outline:3px solid var(--marker);outline-offset:2px}
+.sum{display:grid;grid-template-columns:1fr auto;gap:4px 16px;margin:10px 0;font-variant-numeric:tabular-nums}
+.sum b{text-align:right}
+.log{font-size:13px;color:var(--muted)}
+#helpBtn{position:absolute;right:12px;bottom:12px;width:40px;height:40px;padding:0;border-radius:50%;background:var(--panel);font-weight:800}
+body.holding #helpBtn{display:none}
+@media (max-width:720px){
+  #hud{left:8px;top:8px;width:170px;padding:9px 11px}
+  .clock{font-size:30px}.clock small{display:block;margin:4px 0 0}
+  .row{font-size:12.5px;margin-top:4px}
+  #card{left:8px;right:8px;top:auto;bottom:8px;width:auto;max-height:42%;overflow:auto}
+  #card h3{font-size:17px}
+  #toasts{top:auto;bottom:calc(42% + 18px)}
+  #helpBtn{bottom:8px;right:8px}
+}
+@media (prefers-reduced-motion:reduce){.toast,#vignette,.bar i{transition:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="c"></canvas>
+  <div id="vignette"></div>
+  <div id="hud" class="panel">
+    <div class="clock" id="hClock">17:00<small id="hLeft">до конца дня 60 мин</small></div>
+    <div class="row"><span>Стресс</span><b id="hStress">10%</b></div>
+    <div class="bar"><i id="hBar"></i></div>
+    <div class="row"><span>Во входящих</span><b id="hInbox">0</b></div>
+    <div class="row"><span>Разобрано</span><b id="hDone">0</b></div>
+    <div class="row"><span>Ошибки</span><b id="hErr">0</b></div>
+    <div class="row"><span>Потери</span><b id="hFine">0 ₽</b></div>
+    <div class="row"><span>Кофе</span><b id="hCoffee">3 глотка</b></div>
+  </div>
+  <div id="card" class="panel" hidden="">
+    <div class="head" id="cHead"></div>
+    <div class="inner">
+      <h3 id="cTitle"></h3>
+      <p id="cBody"></p>
+      <div class="tags" id="cTags"></div>
+      <div class="hint">Что можно сделать: поставить печать, провести в компьютере, положить в «Готово» или «Отложить», выбросить в корзину (справа на полу) или вернуть во «Входящие».</div>
+    </div>
+  </div>
+  <div id="toasts"></div>
+  <div id="tip" class="panel"></div>
+  <button id="helpBtn" aria-label="Как играть">?</button>
+  <div id="modal" hidden=""><div class="mbox panel"><div id="mBody"></div><div class="btns" id="mBtns"></div></div></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const ease=k=>k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+const rub=n=>n.toLocaleString('ru-RU')+' ₽';
+const fmt=m=>{m=Math.floor(m);return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');};
+
+/* ---------- tweens ---------- */
+const tweens=[];
+function tween(dur,fn){return new Promise(res=>tweens.push({t:0,dur,fn,res}));}
+function updTweens(dt){for(let i=tweens.length-1;i>=0;i--){const w=tweens[i];w.t+=dt;const k=Math.min(1,w.t/w.dur);w.fn(ease(k),k);if(k>=1){tweens.splice(i,1);w.res();}}}
+const wait=s=>tween(s,()=>{});
+
+/* ---------- sound ---------- */
+let AC=null;
+function beep(f,d,type,v,when){if(!AC)return;when=when||0;const o=AC.createOscillator(),g=AC.createGain();o.type=type||'sine';o.frequency.value=f;
+  const t0=AC.currentTime+when;g.gain.setValueAtTime(v||.06,t0);g.gain.exponentialRampToValueAtTime(.0001,t0+d);o.connect(g);g.connect(AC.destination);o.start(t0);o.stop(t0+d+.05);}
+const SND={
+  ring(){beep(440,.35,'sine',.05);beep(480,.35,'sine',.05);beep(440,.35,'sine',.05,.45);beep(480,.35,'sine',.05,.45);},
+  thump(){beep(85,.18,'square',.07);},
+  good(){beep(880,.12,'sine',.06);beep(1320,.16,'sine',.045,.1);},
+  bad(){beep(150,.35,'sawtooth',.045);},
+  key(){beep(1700+Math.random()*500,.025,'square',.012);},
+  sip(){beep(260,.25,'sine',.03);}
+};
+
+/* ---------- renderer / scene ---------- */
+const app=$('#app'),canvas=$('#c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.outputEncoding=THREE.sRGBEncoding;
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x1f232c);
+const camera=new THREE.PerspectiveCamera(62,1,.02,40);
+camera.rotation.order='YXZ';camera.position.set(0,1.22,.62);scene.add(camera);
+let yaw=0,pitch=-.38;
+
+function mat(c,o){return new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.75,metalness:0},o||{}));}
+function mesh(geo,m,x,y,z,parent){const o=new THREE.Mesh(geo,m);o.position.set(x||0,y||0,z||0);o.castShadow=true;o.receiveShadow=true;(parent||scene).add(o);return o;}
+const B=(w,h,d)=>new THREE.BoxGeometry(w,h,d);
+const C=(rt,rb,h,s)=>new THREE.CylinderGeometry(rt,rb,h,s||24);
+function canvasTex(w,h,draw){const cv=document.createElement('canvas');cv.width=w;cv.height=h;const ctx=cv.getContext('2d');draw(ctx,w,h);
+  const t=new THREE.CanvasTexture(cv);t.encoding=THREE.sRGBEncoding;t.anisotropy=4;t._ctx=ctx;return t;}
+function label(text,w,h,bg,fg){const tex=canvasTex(512,Math.round(512*h/w),(c,W,H)=>{c.fillStyle=bg||'#fbf8ef';c.fillRect(0,0,W,H);
+  c.fillStyle=fg||'#1c2230';c.font='bold '+Math.round(H*.52)+'px Arial, sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText(text,W/2,H/2+2);});
+  return new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:tex}));}
+const interact=[];
+function reg(o,id,name){o.userData.id=id;o.userData.name=name;interact.push(o);return o;}
+
+/* ---------- lights ---------- */
+scene.add(new THREE.HemisphereLight(0xfff1dc,0x3b3128,.55));
+const sun=new THREE.DirectionalLight(0xffc48a,.75);sun.position.set(3,3.2,-.6);sun.target.position.set(0,.7,-.1);
+sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);Object.assign(sun.shadow.camera,{left:-2,right:2,top:2,bottom:-2,near:.5,far:8});
+scene.add(sun,sun.target);
+const ceil=new THREE.PointLight(0xfff4e6,.55,7);ceil.position.set(0,2.8,-.4);scene.add(ceil);
+
+/* ---------- room ---------- */
+const wallM=mat(0xcfc8b8,{roughness:.95});
+const floor=mesh(new THREE.PlaneGeometry(6,6),mat(0x6d5240,{roughness:.9}));floor.rotation.x=-Math.PI/2;
+const back=mesh(new THREE.PlaneGeometry(6,3),wallM,0,1.5,-2.2);
+const left=mesh(new THREE.PlaneGeometry(6,3),wallM,-2.2,1.5,0);left.rotation.y=Math.PI/2;
+const right=mesh(new THREE.PlaneGeometry(6,3),wallM,2.2,1.5,0);right.rotation.y=-Math.PI/2;
+const front=mesh(new THREE.PlaneGeometry(6,3),wallM,0,1.5,2.2);front.rotation.y=Math.PI;
+const ce=mesh(new THREE.PlaneGeometry(6,6),mat(0xe9e5dc),0,3,0);ce.rotation.x=Math.PI/2;
+mesh(B(1.2,.04,.3),mat(0xffffff,{emissive:0xfff3dd,emissiveIntensity:.9}),0,2.97,-.4);
+
+// window with evening city
+const winTex=canvasTex(512,400,(c,W,H)=>{const g=c.createLinearGradient(0,0,0,H);g.addColorStop(0,'#3d3a6b');g.addColorStop(.55,'#d9765a');g.addColorStop(1,'#f3b46b');
+  c.fillStyle=g;c.fillRect(0,0,W,H);c.fillStyle='#fbd38a';c.beginPath();c.arc(360,250,34,0,7);c.fill();
+  for(let x=0;x<W;x+=28+Math.random()*20){const h=90+Math.random()*170,w=26+Math.random()*30;c.fillStyle='#262338';c.fillRect(x,H-h,w,h);
+    c.fillStyle='#ffd77a';for(let y=H-h+10;y<H-8;y+=16)for(let xx=x+5;xx<x+w-6;xx+=10)if(Math.random()<.3)c.fillRect(xx,y,5,7);}});
+const win=new THREE.Mesh(new THREE.PlaneGeometry(1.5,1.15),new THREE.MeshBasicMaterial({map:winTex}));win.position.set(2.19,1.65,-.7);win.rotation.y=-Math.PI/2;scene.add(win);
+const frameM=mat(0xf2f0ea);
+[[0,.6,1.6,.06],[0,-.6,1.6,.06],[0,0,1.6,.04]].forEach(a=>{const f=mesh(B(.05,a[3],a[2]),frameM,2.17,1.65+a[1],-.7);});
+[[-.78],[.78],[0]].forEach(a=>mesh(B(.05,1.25,.05),frameM,2.17,1.65,-.7+a[0]));
+
+// cabinet with binders
+mesh(B(1,1.8,.4),mat(0x8a6849),-1.35,.9,-1.98);
+const binderCols=[0x2f5aa8,0xb3362f,0x2f7d57,0xd4a52c,0x5b4a8f,0x2f5aa8,0x9c3d5c,0x3b7ea1];
+for(let r=0;r<2;r++)for(let i=0;i<8;i++)mesh(B(.085,.32,.3),mat(binderCols[(i+r*3)%8]),-1.78+i*.11,.62+r*.62,-1.77);
+// plant
+mesh(C(.17,.13,.35),mat(0xb86b45),1.65,.175,-1.75);
+for(let i=0;i<7;i++){const s=mesh(new THREE.SphereGeometry(.16,12,10),mat(0x3f7a3c),1.65+(Math.random()-.5)*.25,.5+Math.random()*.45,-1.75+(Math.random()-.5)*.25);s.scale.y=1.3;}
+
+// wall clock
+const clockG=new THREE.Group();clockG.position.set(-.1,2.1,-2.17);scene.add(clockG);
+const cr=mesh(C(.23,.23,.05,40),mat(0x2a2f3a),0,0,0,clockG);cr.rotation.x=Math.PI/2;
+const clockTex=canvasTex(256,256,()=>{});
+const clockFace=new THREE.Mesh(new THREE.CircleGeometry(.205,40),new THREE.MeshBasicMaterial({map:clockTex}));clockFace.position.z=.027;clockG.add(clockFace);
+reg(clockG,'clock','Часы');
+function drawClock(min){const c=clockTex._ctx;c.fillStyle='#fbf8ef';c.fillRect(0,0,256,256);c.translate(128,128);
+  c.strokeStyle='#1c2230';for(let i=0;i<60;i++){c.lineWidth=i%5?2:6;c.beginPath();const r1=i%5?108:98;c.moveTo(Math.sin(i*Math.PI/30)*r1,-Math.cos(i*Math.PI/30)*r1);
+    c.lineTo(Math.sin(i*Math.PI/30)*118,-Math.cos(i*Math.PI/30)*118);c.stroke();}
+  const h=(min/60)%12,m=min%60;
+  c.lineCap='round';c.lineWidth=10;c.beginPath();c.moveTo(0,0);c.lineTo(Math.sin(h*Math.PI/6)*60,-Math.cos(h*Math.PI/6)*60);c.stroke();
+  c.lineWidth=6;c.beginPath();c.moveTo(0,0);c.lineTo(Math.sin(m*Math.PI/30)*95,-Math.cos(m*Math.PI/30)*95);c.stroke();
+  c.fillStyle='#b4232c';c.beginPath();c.arc(0,0,8,0,7);c.fill();c.setTransform(1,0,0,1,0,0);clockTex.needsUpdate=true;}
+
+// door
+const doorG=new THREE.Group();doorG.position.set(-2.17,0,-.35);doorG.rotation.y=Math.PI/2;scene.add(doorG);
+mesh(B(1,2.15,.04),mat(0xefebe2),0,1.075,-.01,doorG);
+mesh(B(.9,2.05,.05),mat(0x7a5536,{roughness:.6}),0,1.025,.01,doorG);
+mesh(new THREE.SphereGeometry(.035,12,10),mat(0xc9a95c,{metalness:.8,roughness:.3}),.36,1,.06,doorG);
+const exitL=label('Выход',.36,.12,'#1d7a45','#ffffff');exitL.position.set(0,2.28,.02);doorG.add(exitL);
+reg(doorG,'door','Дверь');
+
+/* ---------- desk ---------- */
+const TOP=.75;
+const deskM=mat(0xb28c63,{roughness:.55});
+mesh(B(1.8,.05,.85),deskM,0,TOP-.025,-.1);
+[[-.86,-.48],[.86,-.48],[-.86,.28],[.86,.28]].forEach(p=>mesh(B(.05,TOP-.05,.05),mat(0x3a3a3f),p[0],(TOP-.05)/2,p[1]));
+mesh(B(1.7,.45,.02),deskM,0,.45,-.5);
+
+// monitor
+const mon=new THREE.Group();mon.position.set(0,TOP,-.36);scene.add(mon);
+const darkM=mat(0x262a31,{roughness:.45});
+mesh(B(.22,.012,.16),darkM,0,.006,0,mon);mesh(B(.04,.18,.03),darkM,0,.1,-.01,mon);mesh(B(.64,.4,.03),darkM,0,.32,0,mon);
+const screenTex=canvasTex(640,384,()=>{});
+const screen=new THREE.Mesh(new THREE.PlaneGeometry(.6,.36),new THREE.MeshBasicMaterial({map:screenTex}));screen.position.set(0,.32,.0158);mon.add(screen);
+const sticky1=mesh(new THREE.PlaneGeometry(.06,.06),new THREE.MeshBasicMaterial({color:0xf2c230}),.3,.47,.017,mon);sticky1.rotation.z=.12;
+reg(mon,'monitor','Компьютер');
+const kb=mesh(B(.44,.02,.14),mat(0x353a43),0,TOP+.01,-.08);reg(kb,'monitor','Клавиатура');
+for(let r=0;r<4;r++)for(let i=0;i<13;i++)mesh(B(.024,.008,.022),mat(0xdfe2e7),-.18+i*.03,TOP+.024,-.13+r*.032);
+mesh(B(.06,.02,.1),mat(0x353a43),.3,TOP+.01,-.07);
+
+// trays
+function tray(x,z,col,text){const g=new THREE.Group();g.position.set(x,TOP,z);scene.add(g);const m=mat(col,{roughness:.5});
+  mesh(B(.26,.008,.33),m,0,.004,0,g);mesh(B(.26,.045,.008),m,0,.022,.165,g);mesh(B(.26,.045,.008),m,0,.022,-.165,g);
+  mesh(B(.008,.045,.33),m,.13,.022,0,g);mesh(B(.008,.045,.33),m,-.13,.022,0,g);
+  const l=label(text,.2,.045);l.position.set(0,.03,.172);l.rotation.x=-.5;g.add(l);return g;}
+const inboxT=reg(tray(-.56,-.02,0x3f67a8,'Входящие'),'inbox','Входящие');
+const doneT=reg(tray(.56,-.02,0x2f8a55,'Готово'),'done','Готово');
+const postT=reg(tray(.62,-.4,0xc8962c,'Отложить'),'post','Отложить');
+
+// trash bin
+const binG=new THREE.Group();binG.position.set(1.08,0,.3);binG.rotation.y=-1.27;scene.add(binG);
+const binM=mat(0x4a5360,{side:THREE.DoubleSide,roughness:.6});
+mesh(new THREE.CylinderGeometry(.17,.13,.36,24,1,true),binM,0,.18,0,binG);mesh(C(.13,.13,.01),binM,0,.005,0,binG);
+const binL=label('Корзина',.2,.06);binL.position.set(0,.2,.158);binL.rotation.x=-.12;binG.add(binL);
+reg(binG,'trash','Корзина');
+
+// stamp + pad
+const stamp=new THREE.Group();stamp.position.set(.34,TOP,.14);scene.add(stamp);
+mesh(C(.03,.03,.02),mat(0x2a2f3a),0,.01,0,stamp);mesh(C(.012,.014,.06),mat(0x9a6b3f),0,.05,0,stamp);
+mesh(new THREE.SphereGeometry(.022,14,12),mat(0x1f4fbf),0,.09,0,stamp);
+reg(stamp,'stamp','Печать');
+// невидимый увеличенный хитбокс — чтобы клик по штампу срабатывал надёжнее
+(function(){
+  const stampHit = new THREE.Mesh(
+    new THREE.BoxGeometry(.14,.18,.14),
+    new THREE.MeshBasicMaterial({transparent:true, opacity:0, depthWrite:false})
+  );
+  stampHit.position.y=.06;
+  stamp.add(stampHit);
+})();
+mesh(B(.09,.014,.065),mat(0x2a2f3a),.45,TOP+.007,.16);mesh(B(.075,.002,.05),mat(0x1f4fbf),.45,TOP+.015,.16);
+const stampHome=stamp.position.clone();
+
+// mug
+const mug=new THREE.Group();mug.position.set(-.34,TOP,.14);scene.add(mug);
+mesh(C(.038,.034,.095),mat(0xf4f1ea,{roughness:.35}),0,.0475,0,mug);
+const coffee=mesh(C(.034,.034,.004),mat(0x3b2415,{roughness:.2}),0,.085,0,mug);
+const hd=mesh(new THREE.TorusGeometry(.026,.007,8,16),mat(0xf4f1ea,{roughness:.35}),.045,.05,0,mug);hd.scale.x=.7;
+reg(mug,'mug','Кофе');
+const mugHome=mug.position.clone();
+
+// phone
+const phone=new THREE.Group();phone.position.set(-.5,TOP,-.38);scene.add(phone);
+mesh(B(.2,.05,.17),mat(0xb8342e,{roughness:.45}),0,.025,0,phone);
+for(let r=0;r<3;r++)for(let i=0;i<3;i++)mesh(B(.02,.006,.016),mat(0xf2f0ea),-.025+i*.025,.052,.02+r*.022,phone);
+const handset=new THREE.Group();handset.position.set(0,.065,-.045);phone.add(handset);
+const phM=mat(0xb8342e,{roughness:.45});mesh(B(.2,.028,.045),phM,0,0,0,handset);
+mesh(B(.05,.04,.06),phM,-.085,-.006,0,handset);mesh(B(.05,.04,.06),phM,.085,-.006,0,handset);
+reg(phone,'phone','Телефон');
+const handsetHome=handset.position.clone();
+
+// desk lamp (decor)
+mesh(C(.06,.07,.02),darkM,-.78,TOP+.01,-.38);
+const arm=mesh(C(.008,.008,.38),darkM,-.78,TOP+.2,-.34);arm.rotation.x=.25;
+const shade=mesh(new THREE.ConeGeometry(.08,.1,20,1,true),mat(0x2f7d57,{side:THREE.DoubleSide}),-.78,TOP+.38,-.25);shade.rotation.x=.6;
+const lampL=new THREE.PointLight(0xffd9a0,.6,2.2);lampL.position.set(-.76,TOP+.3,-.2);scene.add(lampL);
+
+/* ---------- hands ---------- */
+const skin=mat(0xe2ae8c,{roughness:.7}),sleeveM=mat(0x2d3a55,{roughness:.9}),cuffM=mat(0xf4f4f4);
+function makeHand(s){const g=new THREE.Group();
+  mesh(B(.085,.026,.095),skin,0,0,0,g);
+  const fingers=[];
+  for(let i=0;i<4;i++){const f=new THREE.Group();f.position.set(s*(.03-i*.02),0,-.047);g.add(f);mesh(B(.017,.018,.062-Math.abs(i-1.5)*.008),skin,0,0,-.03,f);fingers.push(f);}
+  const th=new THREE.Group();th.position.set(-s*.045,-.004,-.005);th.rotation.y=s*.6;g.add(th);mesh(B(.02,.02,.05),skin,0,0,-.022,th);fingers.push(th);
+  mesh(B(.06,.03,.05),skin,0,-.002,.06,g);
+  const cuff=mesh(C(.036,.036,.03,16),cuffM,0,-.004,.095,g);cuff.rotation.x=Math.PI/2;
+  const sl=mesh(C(.05,.062,.8,16),sleeveM,0,-.01,.5,g);sl.rotation.x=Math.PI/2;
+  g.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false;}});
+  g.userData={fingers,base:new THREE.Vector3(),anim:false,side:s};camera.add(g);return g;}
+const RH=makeHand(1),LH=makeHand(-1);
+const REST={R:new THREE.Vector3(.22,-.22,-.45),L:new THREE.Vector3(-.22,-.22,-.45)};
+const READ=new THREE.Vector3(.07,-.2,-.36);
+RH.position.copy(REST.R);RH.userData.base.copy(REST.R);RH.rotation.x=.1;
+LH.position.copy(REST.L);LH.userData.base.copy(REST.L);LH.rotation.x=.1;
+
+function localOf(o,dy){camera.updateMatrixWorld();const v=new THREE.Vector3();o.getWorldPosition(v);v.y+=dy||0;return camera.worldToLocal(v);}
+function localOfV(v,dy){camera.updateMatrixWorld();const w=v.clone();w.y+=dy||0;return camera.worldToLocal(w);}
+async function animHand(h,pos,rx,dur){h.userData.anim=true;const p0=h.position.clone(),r0=h.rotation.x;
+  await tween(dur,k=>{h.position.lerpVectors(p0,pos,k);h.rotation.x=r0+(rx-r0)*k;});h.userData.base.copy(pos);h.userData.anim=false;}
+function grip(h,k){const f=h.userData.fingers,s=f.map(x=>x.rotation.x);return tween(.15,e=>f.forEach((x,i)=>x.rotation.x=s[i]+(-k*1.1-s[i])*e));}
+
+/* ---------- tasks ---------- */
+const NEED={stamp:'печать',bank:'оплата',send:'отправка'};
+const T=(o)=>Object.assign({need:[],ok:'done',urgent:false,fine:3000,color:'#3f67a8'},o);
+const POOL=[
+  T({title:'Счёт на оплату',from:'ООО «Ромашка»',body:'Канцтовары, 48 300 ₽. Виза директора есть, оплатить сегодня.',need:['bank'],urgent:true,fine:15000,color:'#2f5aa8'}),
+  T({title:'Акт выполненных работ',from:'ИП Сидоров',body:'Уборка офиса за сентябрь. Подписан исполнителем, нужна наша печать.',need:['stamp'],fine:3000,color:'#2f7d6d'}),
+  T({title:'Записка директора',from:'Директор',body:'«Оплати „Гамме“ 200 тысяч. Договор потом донесём, не переживай».',ok:'trash',fine:50000,color:'#b4232c',trap:'Оплатили без договора — деньги ушли в никуда'}),
+  T({title:'Больничный',from:'Кадровик',body:'Пособие нужно назначить в течение 10 календарных дней. Сегодня не горит.',need:['bank'],fine:5000,color:'#9c3d5c'}),
+  T({title:'Реестр на аванс',from:'Кадровик',body:'Аванс сотрудникам. Выплатить сегодня — иначе компенсация за задержку.',need:['bank'],urgent:true,fine:30000,color:'#2f7d57'}),
+  T({title:'Счёт-фактура',from:'ООО «Вектор»',body:'112 000 ₽ с НДС. ИНН покупателя — не наш, чужая организация.',ok:'trash',fine:20000,color:'#c8622c',trap:'Приняли фактуру с чужим ИНН — вычет НДС под угрозой'}),
+  T({title:'Уведомление по ЕНП',from:'Календарь бухгалтера',body:'Уведомление об исчисленных налогах. Срок — сегодня, 25-е число.',need:['send'],urgent:true,fine:5000,color:'#5b4a8f'}),
+  T({title:'Допсоглашение к аренде',from:'Юрист',body:'Два экземпляра. Поставить печать и отдать обратно юристу.',need:['stamp'],fine:3000,color:'#3b7ea1'}),
+  T({title:'Служебка на премию',from:'Отдел продаж',body:'Просят премию менеджеру. Приказа директора нет.',ok:'trash',fine:10000,color:'#b8912a',trap:'Начислили премию без приказа — придётся сторнировать'}),
+  T({title:'Счёт за связь',from:'Оператор',body:'Интернет и телефония, 7 900 ₽. Оплатить до конца месяца.',need:['bank'],fine:2000,color:'#2f5aa8'})
+];
+const CALLTASK={
+  pay:T({title:'Счёт «Альфа-Снаб»',from:'Директор',body:'Тот самый поставщик. Счёт с визой директора — оплатить сегодня.',need:['bank'],urgent:true,fine:15000,color:'#2f5aa8'}),
+  efs:T({title:'ЕФС-1: приём',from:'Кадровик',body:'Новый сотрудник. Сведения о приёме нужно отправить сегодня.',need:['send'],urgent:true,fine:5000,color:'#5b4a8f'}),
+  demand:T({title:'Требование ИФНС',from:'Налоговая',body:'Пояснения по декларации. На ответ есть 5 рабочих дней.',need:['send'],fine:5000,color:'#b4232c'}),
+  dir:T({title:'Справка по расходам',from:'Директор',body:'Расходы за квартал — «к утру, но лучше сегодня».',need:['send'],fine:2000,color:'#5b4a8f'})
+};
+const CALLS=[
+  {at:17*60+7,who:'Директор',text:'«Альфа-Снаб» звонит мне каждые пять минут! Оплати им сегодня.',
+    opts:[{t:'Пусть пришлют счёт — оплачу',add:'pay',stress:3},{t:'Продиктуйте реквизиты, оплачу так',stress:8,err:['Платёж без счёта: реквизиты с голоса',20000]}],miss:'pay'},
+  {at:17*60+19,who:'Кадровик',text:'У нас новенький с понедельника. ЕФС-1 сегодня отправишь?',
+    opts:[{t:'Несите, отправлю',add:'efs',stress:3},{t:'У вас есть доступ — отправьте сами',stress:-2}],miss:'efs'},
+  {at:17*60+33,who:'Коллега из продаж',text:'Глянь мой авансовый отчёт? Пять минут, честно!',
+    opts:[{t:'Давай, быстро',time:12,stress:6},{t:'Завтра с утра',stress:-1}]},
+  {at:17*60+46,who:'Робот ИФНС',text:'Вам направлено требование о представлении пояснений.',
+    opts:[{t:'Принять, разберусь',add:'demand',stress:5},{t:'Положить трубку',add:'demand',stress:9}],miss:'demand'},
+  {at:18*60+2,who:'Дом',text:'Ты скоро? Ужин остывает.',
+    opts:[{t:'Выхожу через 10 минут!',stress:-8},{t:'Задержусь…',stress:10}]},
+  {at:18*60+20,who:'Директор',text:'О, ты ещё здесь? Отлично, скинь мне справку по расходам.',
+    opts:[{t:'Хорошо, сделаю',add:'dir',stress:6},{t:'Я уже ухожу, утром пришлю',stress:-2}]}
+];
+
+/* ---------- state ---------- */
+const RATE=.25; // игровых минут в реальную секунду
+const G={started:false,over:false,paused:false,busy:false,min:17*60,stress:10,fines:0,handled:0,errors:0,coffee:3,
+  held:null,inbox:[],doneN:0,postN:0,nextSpawn:17*60+4,callIdx:0,ringing:null,log:[],said18:false,poolIdx:0,pool:[]};
+
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function nextDef(){if(G.poolIdx>=G.pool.length){G.pool=shuffle(POOL.slice());G.poolIdx=0;}return G.pool[G.poolIdx++];}
+
+/* ---------- documents ---------- */
+const INBOX_BASE=new THREE.Vector3(-.56,TOP+.012,-.02);
+function wrap(c,text,x,y,maxW,lh){const words=text.split(' ');let line='';for(const w of words){const t=line?line+' '+w:w;if(c.measureText(t).width>maxW&&line){c.fillText(line,x,y);line=w;y+=lh;}else line=t;}c.fillText(line,x,y);return y;}
+function makeDoc(t){
+  const tex=canvasTex(256,340,(c,W,H)=>{c.fillStyle='#fffdf6';c.fillRect(0,0,W,H);c.fillStyle=t.color;c.fillRect(0,0,W,46);
+    c.fillStyle='#fff';c.font='bold 17px Arial';c.fillText(t.from,14,29);c.fillStyle='#1c2230';c.font='bold 23px Arial';
+    const y=wrap(c,t.title,14,82,W-28,26);c.fillStyle='#b9bec8';for(let i=0;i<7;i++)c.fillRect(14,y+26+i*18,W-40-Math.random()*70,6);
+    if(t.urgent){c.save();c.translate(185,300);c.rotate(-.2);c.strokeStyle='#b4232c';c.lineWidth=4;c.strokeRect(-58,-20,116,38);c.fillStyle='#b4232c';c.font='bold 21px Arial';c.textAlign='center';c.fillText('СРОЧНО',0,7);c.restore();}});
+  const side=mat(0xf6f3ea,{roughness:.9}),top=new THREE.MeshStandardMaterial({map:tex,roughness:.9});
+  const d=new THREE.Mesh(B(.17,.004,.225),[side,side,top,side,side,side]);d.castShadow=true;d.receiveShadow=true;
+  d.userData.task=Object.assign({},t,{st:{}});d.userData.ry=(Math.random()-.5)*.3;scene.add(d);return d;}
+function restackInbox(){G.inbox.forEach((d,i)=>{if(d.userData.dropping)return;d.position.set(INBOX_BASE.x,INBOX_BASE.y+i*.005,INBOX_BASE.z);d.rotation.set(0,d.userData.ry,0);});}
+function spawnDoc(def){const d=makeDoc(def||nextDef());d.userData.id='inbox';G.inbox.push(d);const i=G.inbox.length-1;
+  const ty=INBOX_BASE.y+i*.005;d.userData.dropping=true;d.position.set(INBOX_BASE.x,ty+.35,INBOX_BASE.z);d.rotation.set(.4,d.userData.ry,.2);
+  tween(.45,k=>{d.position.y=ty+.35*(1-k);d.rotation.x=.4*(1-k);d.rotation.z=.2*(1-k);}).then(()=>{d.userData.dropping=false;restackInbox();});
+  drawScreen();}
+
+/* ---------- monitor ---------- */
+function drawScreen(s){s=s||{};const c=screenTex._ctx,W=640,H=384;
+  c.fillStyle='#f4f5f7';c.fillRect(0,0,W,H);c.fillStyle='#f2c230';c.fillRect(0,0,W,42);
+  c.fillStyle='#1c2230';c.font='bold 20px Arial';c.fillText('Учёт · '+(s.title||'Рабочий стол'),16,28);
+  if(s.mode==='progress'){c.font='22px Arial';c.fillText(s.sub,40,130);c.strokeStyle='#9aa1ad';c.lineWidth=2;c.strokeRect(40,160,560,30);
+    c.fillStyle='#1f4fbf';c.fillRect(42,162,556*s.p,26);c.fillStyle='#4a5160';c.font='18px Arial';
+    const txt='ИНН 7701234567   КПП 770101001   Сумма ········  Назначение платежа…';c.fillText(txt.slice(0,Math.floor(txt.length*Math.min(1,s.p*1.4))),40,240);
+}
+  else if(s.mode==='result'){c.fillStyle=s.color;c.font='bold 34px Arial';c.textAlign='center';c.fillText(s.text,W/2,H/2);c.font='20px Arial';c.fillStyle='#4a5160';
+    if(s.sub)c.fillText(s.sub,W/2,H/2+40);c.textAlign='left';}
+  else{c.font='bold 24px Arial';c.fillText('Входящие документы: '+G.inbox.length,32,92);c.font='19px Arial';
+    G.inbox.slice().reverse().slice(0,6).forEach((d,i)=>{const t=d.userData.task;c.fillStyle=t.urgent?'#b4232c':'#1c2230';c.fillText((t.urgent?'● ':'○ ')+t.title,40,132+i*30);});
+    c.fillStyle='#6a7180';c.font='17px Arial';c.fillText('Разобрано сегодня: '+G.handled,32,H-24);}
+  screenTex.needsUpdate=true;}
+
+/* ---------- UI ---------- */
+function toast(msg,kind){const el=document.createElement('div');el.className='toast panel '+(kind||'');el.textContent=msg;$('#toasts').appendChild(el);
+  while($('#toasts').children.length>3)$('#toasts').firstChild.remove();
+  setTimeout(()=>el.classList.add('out'),2600);setTimeout(()=>el.remove(),3100);}
+function modal(html,buttons){return new Promise(res=>{G.paused=true;const m=$('#modal');$('#mBody').innerHTML=html;const bx=$('#mBtns');bx.innerHTML='';
+  buttons.forEach((b,i)=>{const e=document.createElement('button');e.textContent=b;if(i===0)e.className='primary';e.onclick=()=>{m.hidden=true;G.paused=false;res(i);};bx.appendChild(e);});
+  m.hidden=false;setTimeout(()=>bx.firstChild&&bx.firstChild.focus(),30);});}
+function showCard(){const d=G.held;if(!d){$('#card').hidden=true;document.body.classList.remove('holding');return;}
+  const t=d.userData.task;$('#card').hidden=false;document.body.classList.add('holding');
+  $('#cHead').style.background=t.color;$('#cHead').textContent='От кого: '+t.from;$('#cTitle').textContent=t.title;$('#cBody').textContent=t.body;
+  const tags=[];if(t.urgent)tags.push('<span class="tag urgent">Срок сегодня</span>');
+  const isStamped = !!(t.st && t.st.stamp) || !!d.userData.stamped;
+  if(isStamped)tags.push('<span class="tag ok">✓ Печать стоит</span>');
+  if(t.st && t.st.bank)tags.push('<span class="tag ok">✓ Оплачено</span>');
+  if(t.st && t.st.send)tags.push('<span class="tag ok">✓ Отправлено</span>');
+  if(t.st && t.st.trap)tags.push('<span class="tag bad">Проведено по ошибке</span>');
+  $('#cTags').innerHTML=tags.join('');}
+let hudT=0;
+function hud(){$('#hClock').firstChild.nodeValue=fmt(G.min);
+  const left=18*60-G.min;$('#hLeft').textContent=left>0?'до конца дня '+Math.ceil(left)+' мин':'переработка '+Math.floor(-left)+' мин';
+  const s=Math.round(G.stress);$('#hStress').textContent=s+'%';const bar=$('#hBar');bar.style.width=s+'%';
+  bar.style.background=s<40?'var(--good)':s<70?'var(--marker)':'var(--bad)';
+  $('#hInbox').textContent=G.inbox.length;$('#hDone').textContent=G.handled;$('#hErr').textContent=G.errors;$('#hFine').textContent=rub(G.fines);
+  $('#hCoffee').textContent=G.coffee?G.coffee+(G.coffee===1?' глоток':' глотка'):'закончился';
+  $('#vignette').style.opacity=clamp((G.stress-45)/55,0,.85);}
+
+function ok(msg){G.handled++;G.stress=Math.max(0,G.stress-4);toast(msg,'good');SND.good();drawScreen();}
+function err(msg,fine){G.errors++;G.fines+=fine||0;G.stress+=12;G.log.push(msg);
+toast(msg+(fine?' (−'+rub(fine)+')':''),'bad');SND.bad();}
+function addTime(m){G.min+=m;}
+
+/* ---------- judge ---------- */
+// ИСПРАВЛЕНО: принимает документ, а не task, и учитывает оба флага печати.
+function judge(doc, where){
+  const t = doc.userData.task;
+  const isStamped = !!(t.st && t.st.stamp) || !!doc.userData.stamped;
+
+  if (where === 'done'){
+    if (t.ok === 'trash'){
+      if (!t.st || !t.st.trap) err('Провели документ, который надо было вернуть: ' + t.title, t.fine);
+      else { G.handled++; toast('Документ в «Готово», но ошибка уже случилась'); }
+      return;
+    }
+    const miss = (t.need || []).filter(n => {
+      if (n === 'stamp') return !isStamped;
+      return !(t.st && t.st[n]);
+    });
+    if (miss.length) err('«'+t.title+'»: не сделано — ' + miss.map(n=>NEED[n]).join(', '), Math.round(t.fine/2));
+    else ok('Готово: ' + t.title);
+
+  } else if (where === 'post'){
+    if (t.urgent) err('«'+t.title+'»: срок сегодня, отложить нельзя', t.fine);
+    else ok('Отложено на завтра: ' + t.title);
+
+  } else if (where === 'trash'){
+    if (t.ok === 'trash') ok('Верно, отклонено: ' + t.title);
+    else err('Выбросили нужный документ: ' + t.title, t.fine);
+  }
+  showCard();
+}
+
+/* ---------- actions ---------- */
+async function takeDoc(){
+  const doc=G.inbox.pop();if(!doc){toast('Во входящих пусто. Можно выдохнуть');return;}
+  G.busy=true;delete doc.userData.id;restackInbox();drawScreen();
+  await animHand(RH,localOf(doc,.03),-.35,.35);await grip(RH,.7);
+  RH.attach(doc);
+  const p0=doc.position.clone(),q0=doc.quaternion.clone(),p1=new THREE.Vector3(0,.02,-.11),q1=new THREE.Quaternion();
+  const hp0=RH.position.clone(),r0=RH.rotation.x;RH.userData.anim=true;
+  await tween(.45,k=>{doc.position.lerpVectors(p0,p1,k);doc.quaternion.copy(q0).slerp(q1,k);RH.position.lerpVectors(hp0,READ,k);RH.rotation.x=r0+(1.05-r0)*k;});
+  RH.userData.base.copy(READ);RH.userData.anim=false;G.held=doc;showCard();G.busy=false;}
+
+async function putDoc(where){
+  const doc=G.held;G.busy=true;
+  const target=where==='done'?doneT:where==='post'?postT:where==='inbox'?inboxT:binG;
+  await animHand(RH,localOf(target,where==='trash'?.45:.12),-.3,.4);
+  scene.attach(doc);grip(RH,0);G.held=null;showCard();
+  const p0=doc.position.clone(),q0=doc.quaternion.clone();
+  if(where==='trash'){const p1=new THREE.Vector3();binG.getWorldPosition(p1);p1.y=.12;
+    await tween(.4,k=>{doc.position.lerpVectors(p0,p1,k);doc.rotation.z+=.15;});
+    scene.remove(doc);}
+  else if(where==='inbox'){doc.userData.id='inbox';G.inbox.push(doc);const i=G.inbox.length-1,p1=new THREE.Vector3(INBOX_BASE.x,INBOX_BASE.y+i*.005,INBOX_BASE.z);
+    await tween(.4,k=>{doc.position.lerpVectors(p0,p1,k);doc.quaternion.copy(q0).slerp(new THREE.Quaternion(),k);});
+    doc.userData.dropping=false;restackInbox();}
+  else{
+    const p1=new THREE.Vector3();target.getWorldPosition(p1);p1.y=TOP+.012;
+    const q1=new THREE.Quaternion().setFromEuler(new THREE.Euler(0,doc.userData.ry,0));
+    await tween(.4,k=>{doc.position.lerpVectors(p0,p1,k);doc.quaternion.copy(q0).slerp(q1,k);});
+    scene.remove(doc);judge(doc, where);}
+  await animHand(RH,REST.R,.1,.35);G.busy=false;drawScreen();}
+
+/* ---------- stamping (ИСПРАВЛЕНО) ---------- */
+async function doStamp(){
+  const doc = G.held;
+  if (!doc) return;
+  const task = doc.userData.task;
+  if (!task.st) task.st = {};
+  if (task.st.stamp || doc.userData.stamped) { toast('Печать уже стоит'); return; }
+
+  G.busy = true;
+  try {
+    // подносим правую руку к штампу
+    const hp0 = RH.position.clone();
+    RH.userData.anim = true;
+    await tween(.3, k => {
+      RH.position.lerpVectors(hp0, localOfV(new THREE.Vector3(.34, TOP + .1, .14)), k);
+    });
+
+    // штамп едет от своего места к документу (корректная конвертация координат)
+    const p0 = stamp.position.clone();
+    const t0Local     = localOf(doc, .03);                    // camera-local
+    const targetWorld = camera.localToWorld(t0Local.clone()); // world-space
+
+    await tween(.3, k => {
+      stamp.position.lerpVectors(p0, targetWorld, k);
+      stamp.rotation.x = -Math.PI/2 * k;
+    });
+
+    SND.thump();
+
+    // ГЛАВНОЕ: ставим флаг сразу и дублируем его на самом документе
+    task.st.stamp        = true;
+    doc.userData.stamped = true;
+
+    // визуальный оттиск
+    const tex = canvasTex(128,128,(c,W,H)=>{
+      c.clearRect(0,0,W,H);
+      c.strokeStyle='rgba(31,79,191,.85)'; c.lineWidth=5;
+      c.beginPath(); c.arc(64,64,48,0,7); c.stroke();
+      c.beginPath(); c.arc(64,64,40,0,7); c.stroke();
+      c.fillStyle='rgba(31,79,191,.85)'; c.font='bold 16px Arial'; c.textAlign='center';
+      c.fillText('ООО «Ромашка»',64,52);
+      c.font='13px Arial'; c.fillText('ИНН 7701234567',64,72);
+      c.fillText('г. Москва',64,88);
+    });
+    const dec = new THREE.Mesh(
+      new THREE.PlaneGeometry(.11,.11),
+      new THREE.MeshBasicMaterial({map:tex, transparent:true})
+    );
+    dec.position.set((Math.random()-.5)*.06, .0025, .04 + (Math.random()-.5)*.08);
+    dec.rotation.x = -Math.PI/2;
+    dec.rotation.z = Math.random()*6;
+    doc.add(dec);
+
+    await wait(.15);
+
+    // штамп домой
+    await tween(.3, k => {
+      stamp.position.lerpVectors(targetWorld.clone(), stampHome.clone(), k);
+      stamp.rotation.x = -Math.PI/2 * (1 - k);
+    });
+    stamp.position.copy(stampHome);
+    stamp.rotation.x = 0;
+
+    await animHand(RH, REST.R, .1, .3);
+  } finally {
+    G.busy = false;
+    showCard();
+  }
+}
+
+/* ---------- computer work ---------- */
+async function doBank(){
+  const doc=G.held;if(!doc)return;if(doc.userData.task.st.bank){toast('Уже проведено');return;}
+  G.busy=true;
+  const hp0=RH.position.clone();RH.userData.anim=true;
+  await tween(.3,k=>{RH.position.lerpVectors(hp0,localOfV(new THREE.Vector3(0,TOP+.06,-.08)),k);});
+  for(let i=0;i<10;i++){SND.key();await wait(.05);}
+  drawScreen({mode:'progress',sub:'Формируем платёжное поручение…',p:i/10});
+  await wait(.2);
+  const n=6+Math.floor(Math.random()*8);
+  for(let i=0;i<n;i++){SND.key();drawScreen({mode:'progress',sub:'Формируем платёжное поручение…',p:(i+1)/n});await wait(.09+Math.random()*.12);}
+  await wait(.3);drawScreen({mode:'result',text:'Оплачено',sub:'Платёжное поручение №'+(1000+Math.floor(Math.random()*9000)),color:'#1d7a45'});
+  doc.userData.task.st.bank=true;
+  await wait(.5);
+  await animHand(RH,REST.R,.1,.35);
+  showCard();G.busy=false;}
+
+async function doSend(){
+  const doc=G.held;if(!doc)return;if(doc.userData.task.st.send){toast('Уже отправлено');return;}
+  G.busy=true;
+  const hp0=RH.position.clone();RH.userData.anim=true;
+  await tween(.3,k=>{RH.position.lerpVectors(hp0,localOfV(new THREE.Vector3(0,TOP+.06,-.08)),k);});
+  for(let i=0;i<8;i++){SND.key();await wait(.06);}
+  drawScreen({mode:'progress',sub:'Отправляем отчёт…',p:.5});
+  await wait(.5);drawScreen({mode:'result',text:'Отправлено',sub:'Квитанция о приёме получена',color:'#1d7a45'});
+  doc.userData.task.st.send=true;
+  await wait(.6);
+  await animHand(RH,REST.R,.1,.35);
+  showCard();G.busy=false;}
+
+async function drinkCoffee(){
+  if(!G.coffee){toast('Кружка пуста');return;}
+  G.busy=true;const hp0=LH.position.clone();LH.userData.anim=true;
+  await tween(.35,k=>{LH.position.lerpVectors(hp0,localOf(mug,.02),k);});
+  await grip(LH,.8);LH.attach(mug);
+  const p0=mug.position.clone();const r0=mug.rotation.x;
+  await tween(.4,k=>{mug.position.lerpVectors(p0,new THREE.Vector3(0,.04,.02),k);mug.rotation.x=r0+.9*k;});
+  SND.sip();G.coffee--;G.stress=Math.max(0,G.stress-5);toast('Кофе бодрит. Стресс −5%','good');
+  coffee.material.color.setHex(0x3b2415);coffee.scale.y=.4;
+  await wait(.5);await grip(LH,0);
+  await tween(.4,k=>{mug.position.lerpVectors(mug.position.clone(),mugHome.clone(),k);mug.rotation.x=r0*(1-k);});
+  scene.attach(mug);mug.position.copy(mugHome);mug.rotation.set(0,0,0);
+  await animHand(LH,REST.L,.1,.4);hud();G.busy=false;}
+
+/* ---------- phone calls ---------- */
+function startRinging(task,cfg){
+  SND.ring();G.ringing={task,cfg,t:0};
+  toast('📞 Звонок: '+(cfg.who||'Неизвестный'),'bad');
+}
+async function answerPhone(){
+  if(!G.ringing)return;G.busy=true;
+  const R=G.ringing;G.ringing=null;
+  const hp0=RH.position.clone();RH.userData.anim=true;
+  await tween(.35,k=>{RH.position.lerpVectors(hp0,localOf(phone,.05),k);});
+  await grip(RH,.8);RH.attach(handset);
+  const p0=handset.position.clone();await tween(.3,k=>{handset.position.lerpVectors(p0,new THREE.Vector3(0,.02,.06),k);});
+  const choice=await modal(
+    '<div class="who">'+ (R.cfg.who||'Звонок') +'</div><p class="quote">'+R.cfg.text+'</p>',
+    R.cfg.opts.map(o=>o.t)
+  );
+  const opt=R.cfg.opts[choice];
+  if(opt.stress)G.stress=clamp(G.stress+opt.stress,0,100);
+  if(opt.time){G.min+=opt.time;toast('Потрачено '+opt.time+' мин','bad');}
+  if(opt.add){const def=CALLTASK[opt.add];if(def)spawnDoc(def);}
+  if(opt.err){err(opt.err[0],opt.err[1]);}
+  await wait(.2);
+  scene.attach(handset);handset.position.copy(handsetHome);handset.rotation.set(0,0,0);
+  await animHand(RH,REST.R,.1,.35);hud();G.busy=false;
+}
+
+/* ---------- interactions ---------- */
+const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
+function pick(ev){
+  const r=canvas.getBoundingClientRect();
+  pointer.x=((ev.clientX-r.left)/r.width)*2-1;
+  pointer.y=-((ev.clientY-r.top)/r.height)*2+1;
+  raycaster.setFromCamera(pointer,camera);
+  const list=interact.concat(G.inbox,G.held?[G.held]:[]);
+  const hits=raycaster.intersectObjects(list,true);
+  return hits[0]?hits[0].object:null;
+}
+function findOwner(o){
+  while(o){if(o.userData&&o.userData.id)return o;o=o.parent;}
+  return null;
+}
+canvas.addEventListener('pointerdown',ev=>{
+  if(!G.started||G.over||G.paused||G.busy)return;
+  const hit=pick(ev);
+  if(!hit){return;}
+  const owner=findOwner(hit);
+  if(!owner)return;
+  const id=owner.userData.id;
+  if(id==='inbox'&&G.inbox.includes(owner)){ev.preventDefault();takeDoc();}
+  else if(id==='stamp'&&G.held){ev.preventDefault();doStamp();}
+  else if(id==='monitor'&&G.held){ev.preventDefault();doBank();}
+  else if(id==='trash'&&G.held){ev.preventDefault();putDoc('trash');}
+  else if(id==='phone'){ev.preventDefault();if(G.ringing)answerPhone();else toast('Телефон молчит');}
+  else if(id==='mug'){ev.preventDefault();drinkCoffee();}
+  else if(id==='door'){ev.preventDefault();try{leave();}catch(e){}}
+  else if(id==='done'&&G.held){ev.preventDefault();putDoc('done');}
+  else if(id==='post'&&G.held){ev.preventDefault();putDoc('post');}
+  else if(id==='inbox'&&G.held){ev.preventDefault();putDoc('inbox');}
+},{passive:false});
+
+canvas.addEventListener('pointermove',ev=>{
+  if(!G.started||G.over)return;
+  if(dragging){yaw-=(ev.clientX-dragX)*.005;pitch=clamp(pitch-(ev.clientY-dragY)*.005,-1.1,.5);dragX=ev.clientX;dragY=ev.clientY;return;}
+  const hit=pick(ev);
+  const tip=$('#tip');
+  if(hit){const owner=findOwner(hit);if(owner&&owner.userData.name){tip.textContent=owner.userData.name;tip.style.display='block';
+    tip.style.left=(ev.clientX+14)+'px';tip.style.top=(ev.clientY+14)+'px';canvas.classList.add('pointer');return;}}
+  tip.style.display='none';canvas.classList.remove('pointer');
+});
+let dragging=false,dragX=0,dragY=0;
+canvas.addEventListener('pointerdown',ev=>{if(!G.started||G.over||G.paused)return;
+  dragging=true;dragX=ev.clientX;dragY=ev.clientY;canvas.setPointerCapture(ev.pointerId);});
+canvas.addEventListener('pointerup',ev=>{dragging=false;});
+canvas.addEventListener('pointercancel',()=>{dragging=false;});
+
+document.addEventListener('keydown',ev=>{
+  if(ev.key==='Escape'&&G.held&&!G.busy){putDoc('inbox');}
+  if(ev.key===' '&&!G.busy&&G.started&&!G.over){ev.preventDefault();if(G.ringing)answerPhone();}
+});
+
+/* ---------- leave / endgame ---------- */
+async function leave(){
+  if(G.held){toast('В руках документ — сначала разберитесь с ним');return;}
+  G.over=true;
+  const onTime=G.min<=18*60+5;
+  const unhandled=G.inbox.length;
+  let title,verdict,desc;
+  if(onTime&&unhandled===0&&G.errors<=1&&G.stress<50){
+    title='🏆 Идеальный вечер';verdict='good';
+    desc='Вы ушли вовремя, все документы разобраны, ошибок почти нет. Так держать!';
+  }else if(onTime&&G.errors<=3){
+    title='✅ Хороший результат';verdict='good';
+    desc='Ушли в срок. Часть документов осталась на завтра — это нормально.';
+  }else if(!onTime&&G.stress>70){
+    title='😩 Переработка';verdict='bad';
+    desc='Ушли позже 18:00 и на нервах. Так недолго и до выгорания.';
+  }else{
+    title='📋 Рабочий день завершён';verdict=G.errors>3?'bad':'ok';
+    desc='Разные бывают дни. Главное — вы дошли до конца.';
+  }
+  const sum=`<h2>${title}</h2><p>${desc}</p>
+    <div class="sum">
+      <span>Время ухода</span><b>${fmt(G.min)}</b>
+      <span>Разобрано документов</span><b>${G.handled}</b>
+      <span>Осталось во «Входящих»</span><b>${unhandled}</b>
+      <span>Ошибок</span><b>${G.errors}</b>
+      <span>Финансовые потери</span><b>${rub(G.fines)}</b>
+      <span>Стресс</span><b>${Math.round(G.stress)}%</b>
+    </div>
+    <div class="log">${G.log.map(l=>'• '+l).join('<br>')||'• Ошибок нет — отличная работа!'}</div>`;
+  await modal(sum,['Играть снова']);
+  location.reload();
+}
+
+/* ---------- spawning ---------- */
+function spawnLoop(){
+  if(G.over)return;
+  const gapMin=2.5+Math.random()*4;
+  G.nextSpawn=G.min+gapMin;
+  spawnDoc();
+}
+function callLoop(){
+  if(G.over)return;
+  const now=G.min;
+  const i=G.callIdx;
+  if(i<CALLS.length&&now>=CALLS[i].at){
+    const c=CALLS[i];G.callIdx++;
+    startRinging(null,c);
+    setTimeout(()=>{
+      if(G.ringing&&G.ringing.cfg===c){
+        G.ringing=null;G.stress+=8;
+        if(c.miss){const def=CALLTASK[c.miss];if(def)spawnDoc(def);toast('Звонок пропущен','bad');}
+      }
+    },14000);
+  }
+}
+
+/* ---------- game tick ---------- */
+let last=performance.now();
+function loop(now){
+  requestAnimationFrame(loop);
+  const dt=Math.min(.05,(now-last)/1000);last=now;
+  updTweens(dt);
+  if(G.started&&!G.paused&&!G.over){
+    G.min+=dt*RATE; // advance game minutes
+    if(G.min>=G.nextSpawn)spawnLoop();
+    callLoop();
+    G.stress=clamp(G.stress+dt*0.8,0,100);
+    if(G.min>=19*60&&!G.over){toast('Уже 19:00…','bad');}
+    hudT+=dt;if(hudT>.15){hudT=0;hud();drawClock(G.min%720);}
+    if(!G.said18&&G.min>=18*60){G.said18=true;toast('18:00 — рабочий день закончился. Можно уходить','good');}
+    if(!RH.userData.anim){RH.position.y=RH.userData.base.y+Math.sin(now*.002)*.004;}
+    if(!LH.userData.anim){LH.position.y=LH.userData.base.y+Math.sin(now*.002+1)*.004;}
+  }
+  camera.rotation.y=yaw;camera.rotation.x=pitch;
+  renderer.render(scene,camera);
+}
+
+/* ---------- resize ---------- */
+function resize(){
+  const w=window.innerWidth,h=window.innerHeight;
+  renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();
+}
+window.addEventListener('resize',resize);
+resize();
+
+/* ---------- onboarding / start ---------- */
+async function intro(){
+  await modal(
+    '<h2>Уйти в 18:00</h2>'+
+    '<p class="quote">17:00. До конца дня — час. На столе входящие, в телефоне — директор, в голове — список из десяти дел.</p>'+
+    '<p><b>Цель:</b> разобрать документы и уйти домой вовремя. Или остаться и узнать, что бывает с теми, кто остаётся.</p>'+
+    '<ul><li>Тяните мышью, чтобы осмотреться.</li>'+
+    '<li>Клик — взять документ, поставить печать, оплатить в компьютере.</li>'+
+    '<li>«Готово», «Отложить», корзина — справа и на столе.</li>'+
+    '<li>Клик по телефону — ответить на звонок (или пробел).</li>'+
+    '<li>Клик по двери — попробовать уйти.</li></ul>'+
+    '<p class="hint">Спойлер: идеального прохождения не существует. Но можно пройти хорошо.</p>',
+    ['Начать']
+  );
+  G.started=true;hud();
+}
+
+/* ---------- help ---------- */
+$('#helpBtn').onclick=async()=>{
+  await modal('<h2>Как играть</h2>'+
+    '<ul><li>Осмотр — перетащите мышь / палец по экрану.</li>'+
+    '<li>Взять документ — клик по стопке «Входящие».</li>'+
+    '<li>Печать — клик по печати в правом верхнем углу стола, когда документ в руке.</li>'+
+    '<li>Оплатить/отправить — клик по компьютеру.</li>'+
+    '<li>Разложить — клик по «Готово», «Отложить» или корзине.</li>'+
+    '<li>Передумать — Esc возвращает документ во «Входящие».</li>'+
+    '<li>Кофе — клик по кружке, восстанавливает нервы.</li></ul>'+
+    '<p>Красные метки «СРОЧНО» — не откладывать. Документы без приказа/с чужим ИНН — в корзину.</p>',
+    ['Понятно']);
+};
+
+/* ---------- boot ---------- */
+drawScreen();
+hud();
+drawClock(17*60%720);
+spawnDoc();spawnDoc();spawnDoc();
+requestAnimationFrame(loop);
+intro();
+
+})();
+</script>
+</body>
+</html>
