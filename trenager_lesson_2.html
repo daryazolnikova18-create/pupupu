@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Тренажер: злоупотребления в арбитражном процессе</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f4f5f7;
+    color: #1c1e21;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+    line-height: 1.5;
+  }
+  .card {
+    background: #fff;
+    max-width: 640px;
+    width: 100%;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+    padding: 40px;
+  }
+  .progress {
+    font-size: 13px;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+  }
+  .scenario {
+    font-size: 19px;
+    font-weight: 500;
+    margin-bottom: 28px;
+    min-height: 100px;
+  }
+  .buttons {
+    display: flex;
+    gap: 12px;
+  }
+  button {
+    flex: 1;
+    padding: 16px 20px;
+    font-size: 15px;
+    font-weight: 600;
+    border: 2px solid #e5e7eb;
+    background: #fff;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: inherit;
+  }
+  button:hover:not(:disabled) {
+    border-color: #1c1e21;
+    background: #fafafa;
+  }
+  button:disabled { cursor: default; opacity: 0.6; }
+  button.correct {
+    background: #d1fae5;
+    border-color: #10b981;
+    color: #065f46;
+  }
+  button.wrong {
+    background: #fee2e2;
+    border-color: #ef4444;
+    color: #991b1b;
+  }
+  .feedback {
+    margin-top: 24px;
+    padding: 20px;
+    border-radius: 10px;
+    font-size: 15px;
+    display: none;
+  }
+  .feedback.show { display: block; }
+  .feedback.ok { background: #ecfdf5; border-left: 4px solid #10b981; }
+  .feedback.no { background: #fef2f2; border-left: 4px solid #ef4444; }
+  .feedback strong { display: block; margin-bottom: 6px; }
+  .next {
+    margin-top: 20px;
+    width: 100%;
+    padding: 14px;
+    background: #1c1e21;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    display: none;
+    font-family: inherit;
+  }
+  .next.show { display: block; }
+  .next:hover { background: #000; }
+  .result {
+    text-align: center;
+    display: none;
+  }
+  .result.show { display: block; }
+  .result h2 { font-size: 24px; margin-bottom: 16px; }
+  .result .score { font-size: 48px; font-weight: 700; margin-bottom: 8px; }
+  .result .label { color: #6b7280; margin-bottom: 28px; }
+  .restart {
+    padding: 14px 32px;
+    background: #1c1e21;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div id="quiz">
+    <div class="progress" id="progress"></div>
+    <div class="scenario" id="scenario"></div>
+    <div class="buttons">
+      <button id="btnYes"></button>
+      <button id="btnNo"></button>
+    </div>
+    <div class="feedback" id="feedback"></div>
+    <button class="next" id="next">Следующая карточка →</button>
+  </div>
+  <div class="result" id="result">
+    <h2>Результат</h2>
+    <div class="score" id="finalScore"></div>
+    <div class="label" id="finalLabel"></div>
+    <button class="restart" onclick="location.reload()">Пройти заново</button>
+  </div>
+</div>
+
+<script>
+const cards = [
+  {
+    scenario: "Представитель не явился в суд, направив ходатайство, что он не хочет участвовать в заседании 13 числа по суеверным причинам.",
+    abuse: true,
+    yesLabel: "Есть злоупотребление",
+    noLabel: "Злоупотребления нет",
+    explanation: "Личные суеверия не являются уважительной причиной. Суды не признают уважительными внутренние и субъективные обстоятельства стороны. Систематическое уклонение от явки квалифицируется как срыв процесса."
+  },
+  {
+    scenario: "Представитель оппонента направил документы ровно за семь дней до заседания.",
+    abuse: false,
+    yesLabel: "Есть злоупотребление",
+    noLabel: "Злоупотребления нет",
+    explanation: "Стандарт добросовестности, сформулированный в деле Дорофеева: направление документов не позднее чем за одну календарную неделю до заседания. Семь дней — соблюдение срока, злоупотребления нет."
+  },
+  {
+    scenario: "Представитель оппонента несколько раз не подключился к заседанию онлайн, но каждый раз представлял ответ из службы поддержки, что проблемы были на стороне платформы.",
+    abuse: false,
+    yesLabel: "Есть злоупотребление",
+    noLabel: "Злоупотребления нет",
+    explanation: "Если сторона подтверждает технический сбой документами от поддержки, ее поведение добросовестно. Риск технической невозможности участия возлагается на заявителя только тогда, когда он не подтверждает сбой."
+  },
+  {
+    scenario: "У оппонента подозрительный документ, вы проверили его через специальную программу и узнали об использовании ИИ. Надо ли указать на это суду?",
+    abuse: false,
+    yesLabel: "Конечно",
+    noLabel: "Нет, использовать ИИ можно",
+    explanation: "Нет. Само по себе использование ИИ не запрещено и не является злоупотреблением. Указывать суду на это бессмысленно, если в документе нет искажений норм закона или выдуманной судебной практики. Штрафуют за фальсификацию, а не за инструмент."
+  },
+  {
+    scenario: "Оппонент постоянно направляет ходатайства: то об отводе судьи, то о перерыве, то снова об отводе. Свои ходатайства сторона никак не мотивирует.",
+    abuse: true,
+    yesLabel: "Есть злоупотребление",
+    noLabel: "Злоупотребления нет",
+    explanation: "Немотивированные ходатайства, повторяющиеся по одному и тому же основанию, направлены на затягивание процесса. В деле «Автолес» за это наложен штраф 50 000 руб. Такое поведение квалифицируется как неуважение к суду."
+  }
+];
+
+let current = 0;
+let score = 0;
+let locked = false;
+
+const el = {
+  progress: document.getElementById('progress'),
+  scenario: document.getElementById('scenario'),
+  btnYes: document.getElementById('btnYes'),
+  btnNo: document.getElementById('btnNo'),
+  feedback: document.getElementById('feedback'),
+  next: document.getElementById('next'),
+  quiz: document.getElementById('quiz'),
+  result: document.getElementById('result'),
+  finalScore: document.getElementById('finalScore'),
+  finalLabel: document.getElementById('finalLabel')
+};
+
+function render() {
+  const card = cards[current];
+  el.progress.textContent = `Карточка ${current + 1} из ${cards.length}`;
+  el.scenario.textContent = card.scenario;
+  el.btnYes.textContent = card.yesLabel;
+  el.btnNo.textContent = card.noLabel;
+  el.feedback.classList.remove('show');
+  el.next.classList.remove('show');
+  el.btnYes.disabled = false;
+  el.btnNo.disabled = false;
+  el.btnYes.className = '';
+  el.btnNo.className = '';
+  locked = false;
+}
+
+function answer(choice) {
+  if (locked) return;
+  locked = true;
+  const card = cards[current];
+  const isCorrect = (choice === card.abuse);
+
+  el.btnYes.disabled = true;
+  el.btnNo.disabled = true;
+
+  const chosenBtn = choice ? el.btnYes : el.btnNo;
+  const otherBtn = choice ? el.btnNo : el.btnYes;
+
+  chosenBtn.classList.add(isCorrect ? 'correct' : 'wrong');
+  if (!isCorrect) {
+    otherBtn.classList.add('correct');
+  }
+
+  if (isCorrect) score++;
+
+  el.feedback.className = 'feedback show ' + (isCorrect ? 'ok' : 'no');
+  el.feedback.innerHTML = `<strong>${isCorrect ? 'Верно!' : 'Неверно.'}</strong>${card.explanation}`;
+  el.next.classList.add('show');
+  el.next.textContent = (current === cards.length - 1) ? 'Показать результат' : 'Следующая карточка →';
+}
+
+el.btnYes.addEventListener('click', () => answer(true));
+el.btnNo.addEventListener('click', () => answer(false));
+
+el.next.addEventListener('click', () => {
+  current++;
+  if (current >= cards.length) {
+    showResult();
+  } else {
+    render();
+  }
+});
+
+function showResult() {
+  el.quiz.style.display = 'none';
+  el.result.classList.add('show');
+  el.finalScore.textContent = `${score} / ${cards.length}`;
+  const pct = score / cards.length;
+  let label = '';
+  if (pct === 1) label = 'Отлично. Вы уверенно распознаете злоупотребления.';
+  else if (pct >= 0.6) label = 'Хорошо. Часть кейсов требует повтора.';
+  else label = 'Стоит перечитать урок и разобрать примеры практики.';
+  el.finalLabel.textContent = label;
+}
+
+render();
+</script>
+</body>
+</html>
