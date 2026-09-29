@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Конструктор возражений по делу Дорофеева</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #eef1f6;
+    color: #1c1e21;
+    min-height: 100vh;
+    padding: 24px 16px;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  .head { text-align: center; margin-bottom: 22px; }
+  .head h1 { font-size: 22px; margin-bottom: 6px; }
+  .head p { color: #6b7280; font-size: 14px; max-width: 700px; margin: 0 auto; }
+  .task {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    border-left: 4px solid #4d8bf5;
+    font-size: 14px;
+    color: #374151;
+  }
+  .task strong { color: #1c1e21; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+    margin-bottom: 22px;
+  }
+
+  .zones {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    position: sticky;
+    top: 20px;
+  }
+  .zone {
+    background: #fff;
+    border: 2px dashed #cbd5e1;
+    border-radius: 14px;
+    padding: 12px;
+    min-height: 180px;
+    transition: border-color 0.2s ease, background 0.2s ease;
+  }
+  .zone[data-zone="facts"] { grid-column: 1 / -1; }
+  .zone.over { border-color: #4d8bf5; background: #eff6ff; }
+  .zone-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #4d8bf5;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .zone-body { display: block; min-height: 100px; }
+
+  .pool-wrap {
+    background: #fff;
+    border-radius: 14px;
+    padding: 14px;
+  }
+  .pool-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #6b7280;
+    margin-bottom: 10px;
+  }
+  .pool {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    min-height: 90px;
+    transition: background 0.15s ease;
+    border-radius: 8px;
+  }
+  .pool.over { background: #eff6ff; }
+
+  .card {
+    display: block;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 12.5px;
+    line-height: 1.4;
+    cursor: grab;
+    user-select: none;
+    transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  }
+  .card:hover { border-color: #4d8bf5; background: #f0f7ff; }
+  .card.selected {
+    border-color: #4d8bf5;
+    background: #dbeafe;
+    box-shadow: 0 0 0 3px rgba(77,139,245,0.25);
+  }
+  .card.dragging { opacity: 0.4; }
+
+  .card.correct { border-color: #10b981; background: #d1fae5; }
+  .card.wrong { border-color: #ef4444; background: #fee2e2; }
+  .card.missed { border-color: #f59e0b; background: #fef3c7; }
+  .card.trap-ok { border-color: #10b981; background: #d1fae5; opacity: 0.7; }
+
+  .zone-body .card { margin-bottom: 8px; }
+  .zone-body .card:last-child { margin-bottom: 0; }
+
+  .card .expl {
+    display: none;
+    font-size: 11.5px;
+    color: #4b5563;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed #cbd5e1;
+    font-style: italic;
+  }
+  .card.checked .expl { display: block; }
+
+  .zone-body:empty::after {
+    content: 'Перетащите карточки сюда';
+    color: #9ca3af;
+    font-size: 12px;
+    font-style: italic;
+    text-align: center;
+    padding: 20px 10px;
+    display: block;
+  }
+
+  .actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  button {
+    padding: 13px 28px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s ease;
+  }
+  .btn-check { background: #4d8bf5; color: #fff; }
+  .btn-check:hover { background: #3a7ae0; }
+  .btn-check:disabled { opacity: 0.5; cursor: default; }
+  .btn-reset { background: #e5e7eb; color: #1c1e21; }
+  .btn-reset:hover { background: #d1d5db; }
+
+  .result {
+    display: none;
+    margin-top: 22px;
+    padding: 22px 26px;
+    border-radius: 14px;
+    background: #fff;
+    border-left: 5px solid #4d8bf5;
+  }
+  .result.show { display: block; }
+  .result h2 { font-size: 18px; margin-bottom: 10px; }
+  .result .score { font-size: 32px; font-weight: 800; color: #4d8bf5; margin-bottom: 8px; }
+  .result .msg { color: #4b5563; font-size: 14px; margin-bottom: 14px; }
+  .result ul { margin-left: 20px; font-size: 13px; color: #4b5563; margin-bottom: 16px; }
+  .result ul li { margin-bottom: 6px; }
+  .result .template-note {
+    padding: 14px 18px;
+    background: #eff6ff;
+    border-radius: 10px;
+    border-left: 3px solid #4d8bf5;
+    font-size: 14px;
+    color: #1e40af;
+    font-weight: 500;
+  }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .zones { position: static; }
+  }
+  @media (max-width: 620px) {
+    .zones, .pool { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="head">
+    <h1>Конструктор возражений на продление процедуры банкротства</h1>
+    <p>Определение ВС от 03.09.2026 по делу № А82-22452/2018</p>
+  </div>
+
+  <div class="task">
+    <strong>Задача.</strong> Вы представляете должника. Кредитор ходатайствует о продлении процедуры реализации имущества. Соберите возражение: распределите карточки по трем блокам — <em>Факты</em>, <em>Правовые доводы</em>, <em>Просительная часть</em>. В наборе есть ловушки: они выглядят как правовые или процессуальные доводы, но на самом деле не работают. Их нужно оставить в пуле.
+  </div>
+
+  <div class="layout">
+    <div class="zones">
+      <div class="zone" data-zone="facts">
+        <div class="zone-title">Факты</div>
+        <div class="zone-body" id="zone-facts"></div>
+      </div>
+      <div class="zone" data-zone="legal">
+        <div class="zone-title">Правовые доводы</div>
+        <div class="zone-body" id="zone-legal"></div>
+      </div>
+      <div class="zone" data-zone="request">
+        <div class="zone-title">Просительная часть</div>
+        <div class="zone-body" id="zone-request"></div>
+      </div>
+    </div>
+
+    <div class="pool-wrap">
+      <div class="pool-title">Карточки для сборки</div>
+      <div class="pool" id="pool"></div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn-check" id="checkBtn">Проверить</button>
+    <button class="btn-reset" id="resetBtn">Сбросить</button>
+  </div>
+
+  <div class="result" id="result">
+    <h2>Результат сборки</h2>
+    <div class="score" id="score"></div>
+    <div class="msg" id="msg"></div>
+    <ul id="mistakes"></ul>
+    <div class="template-note">Шаблон возражений на продление процедуры можете скачать в конце урока.</div>
+  </div>
+
+</div>
+
+<script>
+const cardsData = [
+  { id: 'f1', text: 'Процедура реализации длится более 7 лет, вынесено 25 определений о продлении', correctZone: 'facts',
+    expl: 'Ключевой факт из дела Дорофеева. Суд прямо указал на недопустимость безосновательного затягивания.' },
+  { id: 'f2', text: 'Конкурсная масса исчерпана: реализован один объект, погашено около 60% требований залогового кредитора', correctZone: 'facts',
+    expl: 'Факт, подтверждающий невозможность пополнения массы. Основание для завершения.' },
+  { id: 'f3', text: 'Основная часть обязательств возникла в 2007–2008 годах, более 18 лет назад', correctZone: 'facts',
+    expl: 'Суд учел длительность обязательств при решении вопроса об освобождении от долгов.' },
+  { id: 'f4', text: 'Кредитор более 10 раз не обеспечил явку представителей в судебные заседания', correctZone: 'facts',
+    expl: 'Факт пассивного поведения кредитора. Подтверждает утрату интереса к процедуре.' },
+  { id: 'f5', text: 'Ни один из обособленных споров кредитора не пополнил конкурсную массу', correctZone: 'facts',
+    expl: 'Нулевой результат — ключевой аргумент против продления по делу Дорофеева.' },
+
+  { id: 'l1', text: 'Процедура утратила цель: соразмерное удовлетворение требований и финансовая реабилитация недостижимы (абз. 18 ст. 2 Закона о банкротстве)', correctZone: 'legal',
+    expl: 'Прямая цитата логики ВС РФ: цель процедуры определяет ее судьбу.' },
+  { id: 'l2', text: 'Наличие незавершенных обособленных споров не препятствует завершению процедуры (п. 53 ПП ВАС № 35 от 22.06.2012)', correctZone: 'legal',
+    expl: 'ВС РФ прямо опирался на этот пункт, разрешая завершить процедуру при незавершенных спорах.' },
+  { id: 'l3', text: 'Кредитор злоупотребляет процессуальными правами: серия действий направлена на затягивание, а не на защиту интереса (ст. 10 ГК РФ, ч. 2 ст. 41 АПК РФ)', correctZone: 'legal',
+    expl: 'Квалификация поведения кредитора в деле Дорофеева.' },
+  { id: 'l4', text: 'Неучастие кредитора в процедуре и неподача возражений против освобождения должника квалифицируются как утрата интереса', correctZone: 'legal',
+    expl: 'Правовая позиция из п. 9 определения ВС РФ по делу Дорофеева.' },
+
+  { id: 'r1', text: 'Завершить процедуру реализации имущества', correctZone: 'request',
+    expl: 'Основное требование возражения.' },
+  { id: 'r2', text: 'Освободить должника от дальнейшего исполнения обязательств, за исключением предусмотренных п. 5–6 ст. 213.28 Закона о банкротстве', correctZone: 'request',
+    expl: 'Стандартная формулировка с оговоркой по неснимаемым обязательствам.' },
+
+  { id: 't1', text: 'Признать все сделки должника за последние три года недействительными и вернуть имущество в конкурсную массу (ст. 61.2 Закона о банкротстве)', trap: true,
+    expl: 'Ловушка. Это самостоятельное требование в отдельном обособленном споре, а не правовой довод возражения на продление.' },
+  { id: 't3', text: 'Сослаться на правовую позицию, изложенную в п. 15 постановления Пленума ВС РФ № 48 от 25.12.2018, о недопустимости затягивания процедуры', trap: true,
+    expl: 'Ловушка-фальсификация. В этом постановлении всего 14 пунктов. Именно на несуществующий п. 15 ссылался кредитор в деле Дорофеева.' },
+  { id: 't4', text: 'Заявить о фальсификации доказательств, представленных кредитором, на основании проверки через программу определения ИИ', trap: true,
+    expl: 'Ловушка. Само по себе использование ИИ не является злоупотреблением и не образует фальсификацию.' },
+  { id: 't5', text: 'Ходатайствовать о назначении судебной экспертизы финансового состояния должника для проверки доводов кредитора', trap: true,
+    expl: 'Ловушка. Это действие, наоборот, затянет процедуру и будет противоречить цели завершения.' },
+  { id: 't6', text: 'Просить суд приостановить производство по делу до рассмотрения другого обособленного спора', trap: true,
+    expl: 'Ловушка. В деле Дорофеева суд прямо указал, что незавершенные обособленные споры не препятствуют завершению процедуры.' }
+];
+
+const state = {};
+cardsData.forEach(c => state[c.id] = 'pool');
+
+const poolEl = document.getElementById('pool');
+const zones = {
+  facts: document.getElementById('zone-facts'),
+  legal: document.getElementById('zone-legal'),
+  request: document.getElementById('zone-request')
+};
+const checkBtn = document.getElementById('checkBtn');
+const resetBtn = document.getElementById('resetBtn');
+const resultEl = document.getElementById('result');
+const scoreEl = document.getElementById('score');
+const msgEl = document.getElementById('msg');
+const mistakesEl = document.getElementById('mistakes');
+
+let selectedId = null;
+let checked = false;
+
+function render() {
+  poolEl.innerHTML = '';
+  zones.facts.innerHTML = '';
+  zones.legal.innerHTML = '';
+  zones.request.innerHTML = '';
+
+  cardsData.forEach(card => {
+    const el = document.createElement('div');
+    el.className = 'card';
+    el.draggable = true;
+    el.dataset.id = card.id;
+    el.innerHTML = `<span>${card.text}</span><div class="expl">${card.expl || ''}</div>`;
+
+    if (checked) {
+      el.classList.add('checked');
+      const pos = state[card.id];
+      if (card.trap) {
+        if (pos === 'pool') el.classList.add('trap-ok');
+        else el.classList.add('wrong');
+      } else {
+        if (pos === card.correctZone) el.classList.add('correct');
+        else if (pos === 'pool') el.classList.add('missed');
+        else el.classList.add('wrong');
+      }
+    }
+
+    if (selectedId === card.id && !checked) el.classList.add('selected');
+
+    el.addEventListener('click', (e) => {
+      if (checked) return;
+      if (e.target.closest('.expl')) return;
+      selectedId = (selectedId === card.id) ? null : card.id;
+      render();
+    });
+
+    el.addEventListener('dragstart', (e) => {
+      if (checked) { e.preventDefault(); return; }
+      e.dataTransfer.setData('text/plain', card.id);
+      e.dataTransfer.effectAllowed = 'move';
+      el.classList.add('dragging');
+    });
+    el.addEventListener('dragend', () => el.classList.remove('dragging'));
+
+    const target = state[card.id];
+    if (target === 'pool') poolEl.appendChild(el);
+    else zones[target].appendChild(el);
+  });
+
+  checkBtn.disabled = checked;
+}
+
+Object.values(zones).forEach(zoneBody => {
+  const zone = zoneBody.parentElement;
+  zone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    zone.classList.add('over');
+  });
+  zone.addEventListener('dragleave', (e) => {
+    if (!zone.contains(e.relatedTarget)) zone.classList.remove('over');
+  });
+  zone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    zone.classList.remove('over');
+    if (checked) return;
+    const id = e.dataTransfer.getData('text/plain');
+    if (!id) return;
+    state[id] = zone.dataset.zone;
+    selectedId = null;
+    render();
+  });
+  zone.addEventListener('click', (e) => {
+    if (checked) return;
+    if (e.target.closest('.card')) return;
+    if (!selectedId) return;
+    state[selectedId] = zone.dataset.zone;
+    selectedId = null;
+    render();
+  });
+});
+
+poolEl.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  poolEl.classList.add('over');
+});
+poolEl.addEventListener('dragleave', (e) => {
+  if (!poolEl.contains(e.relatedTarget)) poolEl.classList.remove('over');
+});
+poolEl.addEventListener('drop', (e) => {
+  e.preventDefault();
+  poolEl.classList.remove('over');
+  if (checked) return;
+  const id = e.dataTransfer.getData('text/plain');
+  if (!id) return;
+  state[id] = 'pool';
+  selectedId = null;
+  render();
+});
+poolEl.addEventListener('click', (e) => {
+  if (checked) return;
+  if (e.target.closest('.card')) return;
+  if (!selectedId) return;
+  state[selectedId] = 'pool';
+  selectedId = null;
+  render();
+});
+
+checkBtn.addEventListener('click', () => {
+  checked = true;
+  render();
+
+  let correct = 0;
+  const mistakes = [];
+
+  cardsData.forEach(card => {
+    if (card.trap) {
+      if (state[card.id] === 'pool') correct++;
+      else mistakes.push(`Ловушка попала в сборку: «${card.text}». ${card.expl}`);
+    } else {
+      if (state[card.id] === card.correctZone) correct++;
+      else if (state[card.id] === 'pool') mistakes.push(`Пропущена карточка: «${card.text}». ${card.expl}`);
+      else mistakes.push(`Неверный блок для карточки: «${card.text}». ${card.expl}`);
+    }
+  });
+
+  const maxScore = cardsData.length;
+  scoreEl.textContent = `${correct} / ${maxScore}`;
+  const pct = correct / maxScore;
+  if (pct === 1) msgEl.textContent = 'Отлично. Возражение собрано корректно, ловушки распознаны.';
+  else if (pct >= 0.7) msgEl.textContent = 'Хорошо. Основная логика верна, но есть ошибки — проверьте ниже.';
+  else msgEl.textContent = 'Стоит вернуться к материалу дела Дорофеева и пересобрать возражение.';
+
+  mistakesEl.innerHTML = mistakes.length
+    ? mistakes.map(m => `<li>${m}</li>`).join('')
+    : '<li>Ошибок нет.</li>';
+
+  resultEl.classList.add('show');
+  resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+resetBtn.addEventListener('click', () => {
+  cardsData.forEach(c => state[c.id] = 'pool');
+  checked = false;
+  selectedId = null;
+  resultEl.classList.remove('show');
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
