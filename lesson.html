@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Тренажер: Ходатайства об отложении</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #f1f5f9;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    color: #1e293b;
+  }
+  .container {
+    position: relative;
+    background: #fff;
+    max-width: 720px;
+    width: 100%;
+    border-radius: 20px;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.15);
+    padding: 40px;
+    z-index: 1;
+  }
+  .container::before {
+    content: '';
+    position: absolute;
+    inset: -40px;
+    background: radial-gradient(
+      ellipse at center,
+      #fb923c 0%,
+      rgba(251, 146, 60, 0.55) 45%,
+      rgba(251, 146, 60, 0) 75%
+    );
+    border-radius: 60px;
+    filter: blur(50px);
+    z-index: -1;
+    pointer-events: none;
+  }
+  h1 { font-size: 22px; margin-bottom: 8px; color: #0f172a; }
+  .subtitle { color: #64748b; font-size: 14px; margin-bottom: 24px; }
+  .progress {
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  .progress-bar {
+    height: 100%;
+    background: #f97316;
+    width: 0%;
+    transition: width 0.4s ease;
+  }
+  .counter {
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+  .situation {
+    background: #fff7ed;
+    border-left: 4px solid #f97316;
+    padding: 18px;
+    border-radius: 8px;
+    line-height: 1.6;
+    margin-bottom: 24px;
+    font-size: 15px;
+  }
+  .buttons { display: flex; flex-direction: column; gap: 12px; }
+  button {
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 16px 20px;
+    border: 2px solid #cbd5e1;
+    background: #fff;
+    border-radius: 12px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s;
+  }
+  button:hover:not(:disabled) { border-color: #f97316; background: #fff7ed; }
+  button:disabled { cursor: default; }
+  button.correct { border-color: #16a34a; background: #dcfce7; color: #166534; }
+  button.wrong { border-color: #dc2626; background: #fee2e2; color: #991b1b; }
+  .feedback {
+    margin-top: 20px;
+    padding: 18px;
+    border-radius: 12px;
+    display: none;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  .feedback.show { display: block; }
+  .feedback.correct { background: #dcfce7; border-left: 4px solid #16a34a; }
+  .feedback.wrong { background: #fee2e2; border-left: 4px solid #dc2626; }
+  .feedback .title { font-weight: 700; margin-bottom: 8px; font-size: 16px; }
+  .next-btn {
+    margin-top: 16px;
+    background: #f97316;
+    color: #fff;
+    border: none;
+    padding: 14px 24px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.2s;
+  }
+  .next-btn:hover { background: #ea580c; }
+  .result { text-align: center; padding: 20px 0; }
+  .result h2 { font-size: 26px; margin-bottom: 12px; color: #0f172a; }
+  .result .score { font-size: 48px; font-weight: 800; color: #f97316; margin: 16px 0; }
+  .result p { color: #475569; line-height: 1.6; margin-bottom: 20px; }
+  .restart {
+    background: #f97316;
+    color: #fff;
+    border: none;
+    padding: 14px 32px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .restart:hover { background: #ea580c; }
+</style>
+</head>
+<body>
+<div class="container" id="app"></div>
+
+<script>
+const questions = [
+  {
+    text: "В судебном заседании представитель ответчика заявляет ходатайство об отложении, потому что он занят в другом судебном заседании в этот же день. Ранее ответчик не заявлял о невозможности явки, о дате заседания был извещен своевременно.",
+    isExcusable: false,
+    explanation: "Занятость штатного представителя в других судах не признается уважительной причиной для отложения (определение АС Республики Татарстан от 08.09.2026 по делу № А65-16596/2022). Это субъективная причина, связанная с организацией работы представителя, а не с объективной невозможностью участия."
+  },
+  {
+    text: "Истец ходатайствует об отложении, так как накануне вечером от третьего лица поступил большой объем документов (более 300 страниц), с которыми он не успел ознакомиться. Ранее эти документы в деле не фигурировали, и истец не мог знать об их содержании.",
+    isExcusable: true,
+    explanation: "Сторона получила материалы накануне и объективно не имела времени на ознакомление. Это не злоупотребление, а необходимость обеспечить состязательность."
+  },
+  {
+    text: "Ответчик просит отложить заседание в связи со сменой генерального директора. Новый руководитель не успел ознакомиться с материалами дела и не может сформировать позицию.",
+    isExcusable: false,
+    explanation: "Смена руководства не является уважительной причиной (определение АС Воронежской области от 05.08.2025 по делу № А14-700/2025). Это внутренняя организационная проблема стороны, которая не должна влиять на движение процесса."
+  },
+  {
+    text: "Истец просит отложить разбирательство до вступления в силу решения по другому делу, в котором устанавливаются обстоятельства, имеющие преюдициальное значение для настоящего спора. Это дело сейчас рассматривается в кассационной инстанции.",
+    isExcusable: true,
+    explanation: "Когда исход дела зависит от другого судебного акта, отложение необходимо для правильного разрешения спора и не является затягиванием."
+  },
+  {
+    text: "Представитель истца не подключился к онлайн-заседанию. В ходатайстве об отложении он ссылается на сбой интернета, но не прикладывает никаких доказательств. Суд ранее не фиксировал технических сбоев.",
+    isExcusable: false,
+    explanation: "Суд возлагает риск неподключения на участника, если сбоев в системе не зафиксировано, а доказательств технической невозможности не представлено (постановление АС Уральского округа от 03.09.2026 по делу № А50-7328/2025). Бездоказательная ссылка на сбой — неуважительная причина."
+  },
+  {
+    text: "Ответчик ходатайствует об отложении, чтобы получить документ из архива другого региона. Запрос в архив был направлен своевременно, однако архив задерживает ответ по объективным причинам (проводится проверка фондов). Без этого документа позиция ответчика не может быть полной.",
+    isExcusable: true,
+    explanation: "Сторона действовала добросовестно, запрос направила заранее, задержка вызвана внешними обстоятельствами, а не желанием затянуть процесс. Это уважительная причина."
+  }
+];
+
+let current = 0;
+let score = 0;
+let answered = false;
+
+const app = document.getElementById('app');
+
+function renderQuestion() {
+  answered = false;
+  const q = questions[current];
+  const progress = (current / questions.length) * 100;
+
+  app.innerHTML = `
+    <h1>Ходатайства об отложении</h1>
+    <p class="subtitle">Уважительная причина или затягивание процесса?</p>
+    <div class="progress"><div class="progress-bar" style="width: ${progress}%"></div></div>
+    <div class="counter">Ситуация ${current + 1} из ${questions.length}</div>
+    <div class="situation">${q.text}</div>
+    <div class="buttons" id="buttons">
+      <button data-answer="true">А) Уважительная причина</button>
+      <button data-answer="false">Б) Неуважительная причина</button>
+    </div>
+    <div class="feedback" id="feedback"></div>
+  `;
+
+  document.querySelectorAll('#buttons button').forEach(btn => {
+    btn.addEventListener('click', () => handleAnswer(btn));
+  });
+}
+
+function handleAnswer(btn) {
+  if (answered) return;
+  answered = true;
+
+  const q = questions[current];
+  const userAnswer = btn.dataset.answer === 'true';
+  const isCorrect = userAnswer === q.isExcusable;
+
+  if (isCorrect) score++;
+
+  document.querySelectorAll('#buttons button').forEach(b => {
+    b.disabled = true;
+    const bAns = b.dataset.answer === 'true';
+    if (bAns === q.isExcusable) b.classList.add('correct');
+    else if (b === btn) b.classList.add('wrong');
+  });
+
+  const fb = document.getElementById('feedback');
+  fb.className = 'feedback show ' + (isCorrect ? 'correct' : 'wrong');
+  fb.innerHTML = `
+    <div class="title">${isCorrect ? '✅ Верно!' : '❌ Неверно'}</div>
+    <div>${q.explanation}</div>
+    <button class="next-btn" id="nextBtn">
+      ${current < questions.length - 1 ? 'Следующая ситуация →' : 'Показать результат'}
+    </button>
+  `;
+
+  document.getElementById('nextBtn').addEventListener('click', () => {
+    current++;
+    if (current < questions.length) renderQuestion();
+    else renderResult();
+  });
+}
+
+function renderResult() {
+  const total = questions.length;
+  const percent = Math.round((score / total) * 100);
+  let message = '';
+  if (percent === 100) message = 'Отличный результат! Вы уверенно отличаете злоупотребление от объективной необходимости.';
+  else if (percent >= 70) message = 'Хороший результат. Обратите внимание на разбор ошибок — повторите урок 2.';
+  else message = 'Стоит перечитать урок 2: разграничение уважительных и неуважительных причин отложения.';
+
+  app.innerHTML = `
+    <div class="result">
+      <h2>Тренажер завершен</h2>
+      <div class="score">${score} / ${total}</div>
+      <p>${message}</p>
+      <button class="restart" id="restartBtn">Пройти заново</button>
+    </div>
+  `;
+
+  document.getElementById('restartBtn').addEventListener('click', () => {
+    current = 0;
+    score = 0;
+    renderQuestion();
+  });
+}
+
+renderQuestion();
+</script>
+</body>
+</html>
